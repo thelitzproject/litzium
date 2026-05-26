@@ -25,12 +25,45 @@ const IPC = {
   DEVTOOLS_OPEN: 'open-devtools',
 
   // ── Autocomplete / suggestions ───────────────────────────────────────────
-  // renderer → main (invoke, returns { suggestions, latencyMs })
-  SUGGESTIONS_GET:  'suggestions-get',
-  // renderer → main (send): push WebContentsView down while dropdown is open
-  OMNIBOX_EXPAND:   'omnibox-expand',
-  // renderer → main (send): restore WebContentsView to default position
+  SUGGESTIONS_GET:  'suggestions-get',   // invoke → { suggestions, latencyMs }
+  OMNIBOX_EXPAND:   'omnibox-expand',    // send { height }
   OMNIBOX_COLLAPSE: 'omnibox-collapse',
+
+  // ── History ──────────────────────────────────────────────────────────────
+  HISTORY_GET:    'history-get',     // invoke → HistoryEntry[]
+  HISTORY_REMOVE: 'history-remove',  // invoke { id }
+  HISTORY_CLEAR:  'history-clear',   // send
+
+  // ── Bookmarks ─────────────────────────────────────────────────────────────
+  BOOKMARK_GET_ALL: 'bookmark-get-all',  // invoke → Bookmark[]
+  BOOKMARK_TOGGLE:  'bookmark-toggle',   // invoke { url, title, favicon } → { isBookmarked, bookmark? }
+  BOOKMARK_IS:      'bookmark-is',       // invoke { url } → boolean
+  BOOKMARK_REMOVE:  'bookmark-remove',   // invoke { id }
+  BOOKMARK_STATE:   'bookmark-state',    // main→renderer: { url, isBookmarked }
+
+  // ── Downloads ────────────────────────────────────────────────────────────
+  DOWNLOAD_GET_ALL: 'download-get-all',  // invoke → DownloadRecord[]
+  DOWNLOAD_OPEN:    'download-open',     // send { id }
+  DOWNLOAD_SHOW:    'download-show',     // send { id }
+  DOWNLOAD_CLEAR:   'download-clear',    // send
+  DOWNLOAD_STARTED: 'download-started',  // main→renderer: DownloadRecord
+  DOWNLOAD_UPDATED: 'download-updated',  // main→renderer: { id, state, received, total }
+  DOWNLOAD_DONE:    'download-done',     // main→renderer: { id, state, savePath }
+
+  // ── Settings ──────────────────────────────────────────────────────────────
+  SETTINGS_GET_ALL: 'settings-get-all',  // invoke → Settings object
+  SETTINGS_SET:     'settings-set',      // send { key, value }
+
+  // ── Find in page ─────────────────────────────────────────────────────────
+  FIND_START:      'find-start',       // send { text, forward? }
+  FIND_STOP:       'find-stop',        // send
+  FIND_RESULT:     'find-result',      // main→renderer: { activeMatchOrdinal, matches, finalUpdate }
+  FIND_BAR_OPEN:   'find-bar-open',    // send — push WebContentsView down for find bar
+  FIND_BAR_CLOSE:  'find-bar-close',   // send
+
+  // ── Zoom ──────────────────────────────────────────────────────────────────
+  ZOOM_CHANGED: 'zoom-changed',  // main→renderer: { tabId, zoomFactor }
+  ZOOM_RESET:   'zoom-reset',    // send
 }
 
 module.exports = IPC
