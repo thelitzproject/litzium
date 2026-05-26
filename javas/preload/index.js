@@ -1,9 +1,8 @@
 
-
 const { contextBridge, ipcRenderer } = require('electron')
 const IPC = require('../../dbus/ipc')
 
-// Channels the renderer is allowed to listen on (main → chrome renderer)
+// Channels the main process is allowed to push to the chrome renderer
 const INBOUND = [
   IPC.TAB_CREATED,
   IPC.TAB_CLOSED,
@@ -12,17 +11,28 @@ const INBOUND = [
   IPC.NAV_STATE,
   IPC.FOCUS_OMNIBOX,
   IPC.WIN_MAXIMIZED,
+  IPC.BOOKMARK_STATE,
+  IPC.DOWNLOAD_STARTED,
+  IPC.DOWNLOAD_UPDATED,
+  IPC.DOWNLOAD_DONE,
+  IPC.FIND_RESULT,
+  IPC.FIND_BAR_OPEN,
+  IPC.FIND_BAR_CLOSE,
+  IPC.ZOOM_CHANGED,
 ]
 
 contextBridge.exposeInMainWorld('litzium', {
+  // ── Window controls ──────────────────────────────────────────────────
   minimizeWindow: () => ipcRenderer.send(IPC.WIN_MINIMIZE),
   maximizeWindow: () => ipcRenderer.send(IPC.WIN_MAXIMIZE),
   closeWindow:    () => ipcRenderer.send(IPC.WIN_CLOSE),
 
+  // ── Tabs ─────────────────────────────────────────────────────────────
   newTab:    (url)   => ipcRenderer.send(IPC.TAB_NEW,    url),
   closeTab:  (tabId) => ipcRenderer.send(IPC.TAB_CLOSE,  tabId),
   switchTab: (tabId) => ipcRenderer.send(IPC.TAB_SWITCH, tabId),
 
+  // ── Navigation ───────────────────────────────────────────────────────
   navigate:    (url) => ipcRenderer.send(IPC.NAV_GO,      url),
   goBack:      ()    => ipcRenderer.send(IPC.NAV_BACK),
   goForward:   ()    => ipcRenderer.send(IPC.NAV_FORWARD),
@@ -31,21 +41,30 @@ contextBridge.exposeInMainWorld('litzium', {
   goHome:      ()    => ipcRenderer.send(IPC.NAV_HOME),
   openDevTools: ()   => ipcRenderer.send(IPC.DEVTOOLS_OPEN),
 
-  // ── Autocomplete ──────────────────────────────────────────────────────
-  /**
-   * Fetch search suggestions from the main process (no CORS).
-   * @param {string} query
-   * @param {'google'|'ddg'|'bing'} [provider]
-   * @returns {Promise<{ suggestions: string[], latencyMs: number }>}
-   */
+  // ── Autocomplete ─────────────────────────────────────────────────────
   getSuggestions: (query, provider = 'google') =>
     ipcRenderer.invoke(IPC.SUGGESTIONS_GET, { query, provider }),
-
-  /** Push the WebContentsView down by extraHeight px to reveal the dropdown. */
   expandOmnibox:   (height) => ipcRenderer.send(IPC.OMNIBOX_EXPAND,   { height }),
-  /** Restore the WebContentsView to its default y position. */
   collapseOmnibox: ()       => ipcRenderer.send(IPC.OMNIBOX_COLLAPSE),
 
+  // ── Bookmarks ────────────────────────────────────────────────────────
+  /** Toggle bookmark for the current URL. Returns { isBookmarked, bookmark? } */
+  toggleBookmark: (url, title, favicon) =>
+    ipcRenderer.invoke(IPC.BOOKMARK_TOGGLE, { url, title, favicon }),
+  /** Check if a URL is bookmarked. Returns boolean. */
+  isBookmarked: (url) =>
+    ipcRenderer.invoke(IPC.BOOKMARK_IS, { url }),
+
+  // ── Find in page ─────────────────────────────────────────────────────
+  findStart: (text, forward = true) => ipcRenderer.send(IPC.FIND_START, { text, forward }),
+  findStop:  ()                     => ipcRenderer.send(IPC.FIND_STOP),
+  openFindBar:  () => ipcRenderer.send(IPC.FIND_BAR_OPEN),
+  closeFindBar: () => ipcRenderer.send(IPC.FIND_BAR_CLOSE),
+
+  // ── Zoom ─────────────────────────────────────────────────────────────
+  resetZoom: () => ipcRenderer.send(IPC.ZOOM_RESET),
+
+  // ── IPC event subscription ───────────────────────────────────────────
   /**
    * Subscribe to a main-process event.
    * @param {string} channel
@@ -59,12 +78,11 @@ contextBridge.exposeInMainWorld('litzium', {
     return () => ipcRenderer.removeListener(channel, fn)
   },
 
-  /** Subscribe once. */
   once(channel, cb) {
     if (!INBOUND.includes(channel)) return
     ipcRenderer.once(channel, (_, data) => cb(data))
   },
 
-  /** Expose channel name constants to the renderer (read-only). */
+  /** Frozen copy of all IPC channel name constants. */
   channels: Object.freeze({ ...IPC }),
 })

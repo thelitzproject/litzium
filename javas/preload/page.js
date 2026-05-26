@@ -1,36 +1,55 @@
 /**
  * javas/preload/page.js
  * Minimal preload for trusted internal litzium:// pages that need IPC access.
+ * Exposes window.litzPagesAPI — intentionally limited surface.
  *
- * Exposed as window.litzPagesAPI — intentionally limited surface:
- *  · getSuggestions(query, provider) — fetch search autocomplete
- *  · providers                       — list of valid provider IDs
- *
- * This preload is only injected into pages listed in INTERNAL_PAGES with
- * a `preload` entry. External sites never receive it.
+ * Applied to: newtab, history, bookmarks, downloads, settings, predictions
  */
 
 const { contextBridge, ipcRenderer } = require('electron')
 const IPC = require('../../dbus/ipc')
 
+// Channels internal pages are allowed to receive from main
+const PAGE_INBOUND = [
+  IPC.DOWNLOAD_STARTED,
+  IPC.DOWNLOAD_UPDATED,
+  IPC.DOWNLOAD_DONE,
+]
+
 contextBridge.exposeInMainWorld('litzPagesAPI', {
-  /**
-   * Fetch search suggestions for the given query.
-   *
-   * @param {string}                    query
-   * @param {'google'|'ddg'|'bing'}     [provider='google']
-   * @returns {Promise<{ suggestions: string[], latencyMs: number }>}
-   */
+
+  // ── Suggestions ────────────────────────────────────────────────────
   getSuggestions: (query, provider = 'google') =>
     ipcRenderer.invoke(IPC.SUGGESTIONS_GET, { query, provider }),
+  providers:     Object.freeze(['google', 'ddg', 'bing']),
+  providerNames: Object.freeze({ google: 'Google', ddg: 'DuckDuckGo', bing: 'Bing' }),
 
-  /** Ordered list of supported provider IDs. */
-  providers: Object.freeze(['google', 'ddg', 'bing']),
+  // ── History ────────────────────────────────────────────────────────
+  getHistory:    ()     => ipcRenderer.invoke(IPC.HISTORY_GET),
+  removeHistory: (id)   => ipcRenderer.invoke(IPC.HISTORY_REMOVE, { id }),
+  clearHistory:  ()     => ipcRenderer.send(IPC.HISTORY_CLEAR),
 
-  /** Pretty names for each provider. */
-  providerNames: Object.freeze({
-    google: 'Google',
-    ddg:    'DuckDuckGo',
-    bing:   'Bing',
-  }),
+  // ── Bookmarks ──────────────────────────────────────────────────────
+  getBookmarks:    ()           => ipcRenderer.invoke(IPC.BOOKMARK_GET_ALL),
+  removeBookmark:  (id)         => ipcRenderer.invoke(IPC.BOOKMARK_REMOVE, { id }),
+
+  // ── Downloads ──────────────────────────────────────────────────────
+  getDownloads:  ()     => ipcRenderer.invoke(IPC.DOWNLOAD_GET_ALL),
+  openDownload:  (id)   => ipcRenderer.send(IPC.DOWNLOAD_OPEN,  { id }),
+  showDownload:  (id)   => ipcRenderer.send(IPC.DOWNLOAD_SHOW,  { id }),
+  clearDownloads: ()    => ipcRenderer.send(IPC.DOWNLOAD_CLEAR),
+
+  // ── Settings ───────────────────────────────────────────────────────
+  getSettings:  ()            => ipcRenderer.invoke(IPC.SETTINGS_GET_ALL),
+  setSetting:   (key, value)  => ipcRenderer.send(IPC.SETTINGS_SET, { key, value }),
+
+  // ── IPC subscription (for live download updates) ───────────────────
+  on(channel, cb) {
+    if (!PAGE_INBOUND.includes(channel)) return () => {}
+    const fn = (_, data) => cb(data)
+    ipcRenderer.on(channel, fn)
+    return () => ipcRenderer.removeListener(channel, fn)
+  },
+
+  channels: Object.freeze({ ...IPC }),
 })
