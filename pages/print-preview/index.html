@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Print Preview — Litzium</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #13131f;
+      --surface:   #1e1e32;
+      --surface2:  #252540;
+      --surface3:  #2d2d44;
+      --border:    #2a2a42;
+      --accent:    #7c83f7;
+      --text:      #e2e2f0;
+      --sub:       #9090b0;
+      --muted:     #555570;
+      --danger:    #f87171;
+      --sidebar-w: 300px;
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    /* ─── Layout ──────────────────────────────────────────────────────────── */
+
+    .pp-wrap {
+      display: flex;
+      height: 100vh;
+    }
+
+    /* ─── Sidebar ─────────────────────────────────────────────────────────── */
+
+    .pp-sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .pp-sidebar-header {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .pp-sidebar-header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+
+    #pp-page-title {
+      font-size: 11px;
+      color: var(--sub);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ─── Settings sections ───────────────────────────────────────────────── */
+
+    .pp-settings { flex: 1; padding: 12px 0; }
+
+    .pp-section {
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .pp-section:last-child { border-bottom: none; }
+
+    .pp-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    /* Select control */
+    .pp-select {
+      width: 100%;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      padding: 6px 28px 6px 10px;
+      border-radius: 6px;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%239090b0'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      background-size: 14px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.12s;
+    }
+    .pp-select:focus { border-color: var(--accent); }
+
+    /* Orientation radio row */
+    .pp-radio-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .pp-radio-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 7px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      background: var(--surface3);
+      color: var(--sub);
+      font-size: 12px;
+      transition: border-color 0.12s, color 0.12s, background 0.12s;
+    }
+
+    .pp-radio-btn input { display: none; }
+
+    .pp-radio-btn:has(input:checked) {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(124,131,247,0.1);
+    }
+
+    .pp-radio-btn svg { width: 22px; height: 22px; flex-shrink: 0; }
+
+    /* Toggle row */
+    .pp-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .pp-toggle-row span {
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    /* CSS toggle switch */
+    .pp-toggle { position: relative; display: inline-block; width: 36px; height: 20px; }
+    .pp-toggle input { opacity: 0; width: 0; height: 0; }
+    .pp-toggle-track {
+      position: absolute; inset: 0;
+      background: var(--surface3);
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      transition: background 0.18s, border-color 0.18s;
+      cursor: pointer;
+    }
+    .pp-toggle-track::after {
+      content: '';
+      position: absolute;
+      width: 13px; height: 13px;
+      left: 2px; top: 50%;
+      transform: translateY(-50%);
+      background: var(--sub);
+      border-radius: 50%;
+      transition: transform 0.18s, background 0.18s;
+    }
+    .pp-toggle input:checked + .pp-toggle-track { background: var(--accent); border-color: var(--accent); }
+    .pp-toggle input:checked + .pp-toggle-track::after { transform: translate(16px, -50%); background: #fff; }
+
+    /* Page count */
+    #pp-page-count {
+      font-size: 12px;
+      color: var(--sub);
+      margin-top: 6px;
+    }
+
+    /* ─── Action buttons ──────────────────────────────────────────────────── */
+
+    .pp-actions {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .pp-btn {
+      width: 100%;
+      padding: 9px 16px;
+      border-radius: 6px;
+      border: none;
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.12s, opacity 0.12s;
+    }
+    .pp-btn:disabled { opacity: 0.4; cursor: default; }
+
+    .pp-btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .pp-btn-primary:hover:not(:disabled) { background: #9ba1f9; }
+
+    .pp-btn-secondary {
+      background: var(--surface3);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .pp-btn-secondary:hover:not(:disabled) { background: #383850; border-color: #4a4a68; }
+
+    .pp-btn-ghost {
+      background: transparent;
+      color: var(--sub);
+    }
+    .pp-btn-ghost:hover:not(:disabled) { color: var(--text); }
+
+    /* ─── Preview area ────────────────────────────────────────────────────── */
+
+    .pp-preview {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #3a3a4a;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Toolbar strip above preview */
+    .pp-preview-toolbar {
+      height: 40px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-shrink: 0;
+      font-size: 12px;
+      color: var(--sub);
+    }
+
+    .pp-nav-btn {
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      color: var(--sub);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.1s, color 0.1s;
+    }
+    .pp-nav-btn:hover:not(:disabled) { background: rgba(255,255,255,0.07); color: var(--text); }
+    .pp-nav-btn:disabled { opacity: 0.3; cursor: default; }
+    .pp-nav-btn svg { width: 16px; height: 16px; }
+
+    /* PDF embed container */
+    .pp-preview-body {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow: auto;
+      position: relative;
+    }
+
+    #pp-embed {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 4px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    }
+
+    /* Loading / error states */
+    .pp-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: var(--sub);
+      font-size: 14px;
+      text-align: center;
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .pp-spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(124,131,247,0.25);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: pp-spin 0.8s linear infinite;
+    }
+    @keyframes pp-spin { to { transform: rotate(360deg); } }
+
+    .pp-state.error { color: var(--danger); }
+    .pp-state.error .pp-spinner { display: none; }
+
+    .pp-state.hidden { display: none; }
+
+    /* Re-generate indicator */
+    #pp-regen-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(19,19,31,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    #pp-regen-overlay.visible { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<div class="pp-wrap">
+
+  <!-- ─── Sidebar ──────────────────────────────────────────────────────────── -->
+  <aside class="pp-sidebar">
+
+    <div class="pp-sidebar-header">
+      <h1>Print preview</h1>
+      <div id="pp-page-title">Loading…</div>
+    </div>
+
+    <div class="pp-settings">
+
+      <!-- Paper size -->
+      <div class="pp-section">
+        <div class="pp-label">Paper size</div>
+        <select class="pp-select" id="pp-size">
+          <option value="A4" selected>A4</option>
+          <option value="Letter">US Letter</option>
+          <option value="Legal">Legal</option>
+          <option value="A3">A3</option>
+          <option value="A5">A5</option>
+          <option value="Tabloid">Tabloid</option>
+        </select>
+      </div>
+
+      <!-- Orientation -->
+      <div class="pp-section">
+        <div class="pp-label">Orientation</div>
+        <div class="pp-radio-row">
+          <label class="pp-radio-btn">
+            <input type="radio" name="orientation" value="portrait" checked>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="3" width="14" height="18" rx="1"/>
+            </svg>
+            Portrait
+          </label>
+          <label class="pp-radio-btn">
+            <input type="radio" name="orientation" value="landscape">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="5" width="18" height="14" rx="1"/>
+            </svg>
+            Landscape
+          </label>
+        </div>
+      </div>
+
+      <!-- Margins -->
+      <div class="pp-section">
+        <div class="pp-label">Margins</div>
+        <select class="pp-select" id="pp-margins">
+          <option value="default" selected>Default</option>
+          <option value="none">None</option>
+          <option value="printableArea">Minimum</option>
+        </select>
+      </div>
+
+      <!-- Background graphics -->
+      <div class="pp-section">
+        <label class="pp-toggle-row">
+          <span>Background graphics</span>
+          <label class="pp-toggle">
+            <input type="checkbox" id="pp-background" checked>
+            <span class="pp-toggle-track"></span>
+          </label>
+        </label>
+      </div>
+
+      <!-- Pages info -->
+      <div class="pp-section">
+        <div class="pp-label">Pages</div>
+        <div id="pp-page-count">—</div>
+      </div>
+
+    </div><!-- .pp-settings -->
+
+    <div class="pp-actions">
+      <button class="pp-btn pp-btn-primary"    id="pp-print"  disabled>
+        <svg style="display:inline;width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v5a2 2 0 002 2h1v2a1 1 0 001 1h8a1 1 0 001-1v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a1 1 0 00-1-1H6a1 1 0 00-1 1zm2 0h6v3H7V4zm-1 9h8v4H6v-4zm8-4a1 1 0 110 2 1 1 0 010-2z" clip-rule="evenodd"/>
+        </svg>
+        Print
+      </button>
+      <button class="pp-btn pp-btn-secondary"  id="pp-save"   disabled>
+        <svg style="display:inline;width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
+        Save as PDF
+      </button>
+      <button class="pp-btn pp-btn-ghost"      id="pp-cancel">Cancel</button>
+    </div>
+
+  </aside>
+
+  <!-- ─── Preview ───────────────────────────────────────────────────────────── -->
+  <div class="pp-preview">
+
+    <!-- Mini toolbar: page navigation -->
+    <div class="pp-preview-toolbar">
+      <button class="pp-nav-btn" id="pp-prev" title="Previous page" disabled>
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+      </button>
+      <span id="pp-pager">Page — of —</span>
+      <button class="pp-nav-btn" id="pp-next" title="Next page" disabled>
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+      </button>
+    </div>
+
+    <!-- PDF embed -->
+    <div class="pp-preview-body">
+      <embed id="pp-embed" type="application/pdf" hidden>
+
+      <!-- Loading state -->
+      <div class="pp-state" id="pp-loading">
+        <div class="pp-spinner"></div>
+        <span>Generating preview…</span>
+      </div>
+
+      <!-- Regen overlay (shown while re-generating on settings change) -->
+      <div id="pp-regen-overlay">
+        <div class="pp-spinner"></div>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- .pp-wrap -->
+
+<script>
+'use strict'
+
+// ─── API ──────────────────────────────────────────────────────────────────────
+
+const api = window.litzPagesAPI   // injected by javas/preload/page.js
+
+// ─── DOM refs ─────────────────────────────────────────────────────────────────
+
+const titleEl   = document.getElementById('pp-page-title')
+const sizeEl    = document.getElementById('pp-size')
+const bgEl      = document.getElementById('pp-background')
+const marginsEl = document.getElementById('pp-margins')
+const countEl   = document.getElementById('pp-page-count')
+const pagerEl   = document.getElementById('pp-pager')
+const embed     = document.getElementById('pp-embed')
+const loadState = document.getElementById('pp-loading')
+const regenEl   = document.getElementById('pp-regen-overlay')
+const printBtn  = document.getElementById('pp-print')
+const saveBtn   = document.getElementById('pp-save')
+const cancelBtn = document.getElementById('pp-cancel')
+const prevBtn   = document.getElementById('pp-prev')
+const nextBtn   = document.getElementById('pp-next')
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+let currentBlobUrl = null
+let totalPages     = 0
+let currentPage    = 1
+let regenTimer     = null
+let generating     = false
+
+// ─── Settings ─────────────────────────────────────────────────────────────────
+
+function getOpts() {
+  const landscape = document.querySelector('input[name="orientation"]:checked')?.value === 'landscape'
+  return {
+    pageSize:        sizeEl.value,
+    landscape,
+    printBackground: bgEl.checked,
+    marginType:      marginsEl.value,
+  }
+}
+
+// ─── PDF generation ───────────────────────────────────────────────────────────
+
+async function generate(isRegen = false) {
+  if (generating) return
+  generating = true
+
+  if (isRegen) {
+    regenEl.classList.add('visible')
+  } else {
+    loadState.classList.remove('hidden')
+    embed.hidden = true
+    printBtn.disabled = true
+    saveBtn.disabled  = true
+  }
+
+  try {
+    if (!api) throw new Error('litzPagesAPI not available — open as litzium://print-preview')
+
+    const result = await api.generatePrintPreview(getOpts())
+
+    if (!result?.pdfBase64) throw new Error(result?.error ?? 'No PDF data returned')
+
+    // Convert base64 → Blob → object URL
+    const bin  = atob(result.pdfBase64)
+    const buf  = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i)
+    const blob = new Blob([buf], { type: 'application/pdf' })
+
+    // Revoke previous URL to avoid memory leaks
+    if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl)
+    currentBlobUrl = URL.createObjectURL(blob)
+
+    embed.src    = currentBlobUrl + '#toolbar=0&navpanes=0'
+    embed.hidden = false
+    loadState.classList.add('hidden')
+    printBtn.disabled = false
+    saveBtn.disabled  = false
+
+    // Page count from estimated PDF size (rough; real count needs PDF parsing)
+    // Use the page count field from result if available, else estimate
+    updatePageCount(result.pageCount ?? null)
+
+    // Update title
+    if (result.title) titleEl.textContent = result.title
+
+  } catch (err) {
+    loadState.querySelector('span').textContent = err.message
+    loadState.classList.add('error')
+    loadState.classList.remove('hidden')
+  } finally {
+    generating = false
+    regenEl.classList.remove('visible')
+  }
+}
+
+function scheduleRegen() {
+  clearTimeout(regenTimer)
+  regenTimer = setTimeout(() => generate(true), 600)
+}
+
+function updatePageCount(count) {
+  if (count && count > 0) {
+    totalPages = count
+    currentPage = 1
+    countEl.textContent = `${count} page${count !== 1 ? 's' : ''}`
+    pagerEl.textContent = `Page 1 of ${count}`
+    prevBtn.disabled = true
+    nextBtn.disabled = count <= 1
+  } else {
+    countEl.textContent = '—'
+    pagerEl.textContent = 'Page — of —'
+    prevBtn.disabled = true
+    nextBtn.disabled = true
+  }
+}
+
+// ─── Actions ──────────────────────────────────────────────────────────────────
+
+printBtn.addEventListener('click', async () => {
+  if (!api) return
+  printBtn.disabled = true
+  printBtn.textContent = 'Printing…'
+  await api.printSourcePage(getOpts())
+  printBtn.disabled = false
+  printBtn.innerHTML = `<svg style="display:inline;width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v5a2 2 0 002 2h1v2a1 1 0 001 1h8a1 1 0 001-1v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a1 1 0 00-1-1H6a1 1 0 00-1 1zm2 0h6v3H7V4zm-1 9h8v4H6v-4zm8-4a1 1 0 110 2 1 1 0 010-2z" clip-rule="evenodd"/></svg>Print`
+})
+
+saveBtn.addEventListener('click', async () => {
+  if (!api) return
+  saveBtn.disabled = true
+  saveBtn.textContent = 'Saving…'
+  const result = await api.saveSourceAsPDF(getOpts())
+  saveBtn.disabled = false
+  saveBtn.innerHTML = `<svg style="display:inline;width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>Save as PDF`
+  if (result?.saved && result?.filePath) {
+    saveBtn.textContent = '✓ Saved'
+    setTimeout(() => {
+      saveBtn.innerHTML = `<svg style="display:inline;width:14px;height:14px;vertical-align:-2px;margin-right:6px" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>Save as PDF`
+    }, 2500)
+  }
+})
+
+cancelBtn.addEventListener('click', () => {
+  if (api) api.navigate('litzium://newtab')
+  else window.history.back()
+})
+
+// ─── Settings change → re-generate ───────────────────────────────────────────
+
+sizeEl.addEventListener('change',    scheduleRegen)
+marginsEl.addEventListener('change', scheduleRegen)
+bgEl.addEventListener('change',      scheduleRegen)
+
+document.querySelectorAll('input[name="orientation"]').forEach(r => {
+  r.addEventListener('change', scheduleRegen)
+})
+
+// ─── Initial generation ───────────────────────────────────────────────────────
+
+generate(false)
+</script>
+</body>
+</html>
