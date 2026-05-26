@@ -133,6 +133,26 @@ function setupIPC() {
     const result = await printer.savePDF(wc, win)
     win?.webContents.send(IPC.PRINT_RESULT, result)
   })
+
+  // ── Print Preview ──────────────────────────────────────────────────────────
+  ipcMain.on(IPC.PRINT_PREVIEW_OPEN, () => tabs.openPrintPreview())
+  ipcMain.handle(IPC.PRINT_PREVIEW_GENERATE, async (_, opts = {}) => {
+    const wc = tabs.getPrintPreviewTarget()
+    if (!wc) return { success: false, error: 'No print target available' }
+    return printer.generatePreviewPDF(wc, opts)
+  })
+
+  ipcMain.handle(IPC.PRINT_PREVIEW_PRINT, async (_, opts = {}) => {
+    const wc = tabs.getPrintPreviewTarget()
+    if (!wc) return { success: false, failureReason: 'No print target available' }
+    return printer.printPage(wc, opts)
+  })
+
+  ipcMain.handle(IPC.PRINT_PREVIEW_SAVE, async (_, opts = {}) => {
+    const wc = tabs.getPrintPreviewTarget()
+    if (!wc || !win) return { saved: false, error: 'No print target available' }
+    return printer.savePDF(wc, win, opts)
+  })
 }
 
 

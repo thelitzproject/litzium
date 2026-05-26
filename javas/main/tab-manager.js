@@ -15,6 +15,9 @@ let chromeHeight   = 88   // base chrome height set during init
 let suggestionExtra = 0   // extra px from open suggestions dropdown
 let findBarExtra    = 0   // extra px from open find bar
 
+/** Tab ID of the page that Ctrl+P was pressed on (source for print preview). */
+let printPreviewTargetId = null
+
 const FIND_BAR_H = 44
 
 /** @type {Map<string, Tab>} */
@@ -97,7 +100,8 @@ const INTERNAL_PAGES = {
   'litzium://history':     { file: 'pages/history/index.html',     title: 'History',       preload: PAGE_PRELOAD },
   'litzium://bookmarks':   { file: 'pages/bookmarks/index.html',   title: 'Bookmarks',     preload: PAGE_PRELOAD },
   'litzium://downloads':   { file: 'pages/downloads/index.html',   title: 'Downloads',     preload: PAGE_PRELOAD },
-  'litzium://predictions': { file: 'pages/predictions/index.html', title: 'Predictions',   preload: PAGE_PRELOAD },
+  'litzium://predictions':   { file: 'pages/predictions/index.html',   title: 'Predictions',    preload: PAGE_PRELOAD },
+  'litzium://print-preview': { file: 'pages/print-preview/index.html', title: 'Print Preview',  preload: PAGE_PRELOAD },
 }
 
 // Root of the project (two levels up from javas/main/)
@@ -243,7 +247,7 @@ function attachEvents(id, view) {
     else if (ctrl &&  input.shift && input.key === 'Tab')            { event.preventDefault(); cycleTab(-1) }
     else if (ctrl && input.key === 'f')                              { event.preventDefault(); toChrome(IPC.FIND_BAR_OPEN, {}) }
     else if (ctrl && input.key === '0')                              { event.preventDefault(); resetZoom() }
-    else if (ctrl && !input.shift && input.key === 'p')              { event.preventDefault(); toChrome(IPC.PRINT, {}) }
+    else if (ctrl && !input.shift && input.key === 'p')              { event.preventDefault(); openPrintPreview() }
     else if (ctrl &&  input.shift && input.key === 'p')              { event.preventDefault(); toChrome(IPC.PRINT_TO_PDF, {}) }
     // Ctrl+1–9 tab switching
     else if (ctrl && input.key >= '1' && input.key <= '9') {
@@ -387,6 +391,28 @@ function resetZoom() {
   toChrome(IPC.ZOOM_CHANGED, { tabId: activeId, zoomFactor: 1 })
 }
 
+// ─── Print Preview ───────────────────────────────────────────────────────────
+
+/**
+ * Store the current tab as the print source, then open a new print-preview tab.
+ * Called by Ctrl+P when the page is focused.
+ */
+function openPrintPreview() {
+  if (!activeId) return
+  printPreviewTargetId = activeId
+  createTab('litzium://print-preview')
+}
+
+/**
+ * Return the WebContents of the tab that triggered print preview.
+ * Used by the main process to generate the preview PDF and print.
+ * @returns {Electron.WebContents|null}
+ */
+function getPrintPreviewTarget() {
+  if (!printPreviewTargetId) return null
+  return tabs.get(printPreviewTargetId)?.view.webContents ?? null
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function toChrome(channel, data) {
@@ -421,5 +447,6 @@ module.exports = {
   findInPage, findNext, stopFindInPage,
   resetZoom, setSearchEngine,
   getActiveWebContents,
+  openPrintPreview, getPrintPreviewTarget,
   get size() { return tabs.size },
 }

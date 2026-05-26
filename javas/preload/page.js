@@ -43,6 +43,17 @@ contextBridge.exposeInMainWorld('litzPagesAPI', {
   getSettings:  ()            => ipcRenderer.invoke(IPC.SETTINGS_GET_ALL),
   setSetting:   (key, value)  => ipcRenderer.send(IPC.SETTINGS_SET, { key, value }),
 
+  // ── Navigation (used by print-preview cancel button) ──────────────
+  navigate: (url) => ipcRenderer.send(IPC.NAV_GO, url),
+
+  // ── Print Preview ─────────────────────────────────────────────────
+  /** Generate a PDF preview of the source page. Returns { success, data: base64, error? } */
+  generatePrintPreview: (opts) => ipcRenderer.invoke(IPC.PRINT_PREVIEW_GENERATE, opts ?? {}),
+  /** Print the source page via the OS print dialog. Returns { success, failureReason? } */
+  printSourcePage:      (opts) => ipcRenderer.invoke(IPC.PRINT_PREVIEW_PRINT,    opts ?? {}),
+  /** Save the source page as a PDF (shows save dialog). Returns { saved, filePath?, error? } */
+  saveSourceAsPDF:      (opts) => ipcRenderer.invoke(IPC.PRINT_PREVIEW_SAVE,     opts ?? {}),
+
   // ── IPC subscription (for live download updates) ───────────────────
   on(channel, cb) {
     if (!PAGE_INBOUND.includes(channel)) return () => {}

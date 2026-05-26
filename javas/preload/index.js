@@ -68,8 +68,9 @@ contextBridge.exposeInMainWorld('litzium', {
   resetZoom: () => ipcRenderer.send(IPC.ZOOM_RESET),
 
   // ── Print ─────────────────────────────────────────────────────────────
-  printPage:  () => ipcRenderer.send(IPC.PRINT),
-  printToPDF: () => ipcRenderer.send(IPC.PRINT_TO_PDF),
+  printPage:        () => ipcRenderer.send(IPC.PRINT),
+  printToPDF:       () => ipcRenderer.send(IPC.PRINT_TO_PDF),
+  openPrintPreview: () => ipcRenderer.send(IPC.PRINT_PREVIEW_OPEN),
 
   // ── IPC event subscription ───────────────────────────────────────────
   /**
