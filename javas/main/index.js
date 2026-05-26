@@ -7,6 +7,7 @@ const history   = require('../../modules/history')
 const bookmarks = require('../../modules/bookmarks')
 const downloads = require('../../modules/downloads')
 const settings  = require('../../modules/settings')
+const printer   = require('../../printing/print')
 const CHROME_HEIGHT = 88
 
 let win = null
@@ -117,6 +118,21 @@ function setupIPC() {
 
   // ── Zoom ───────────────────────────────────────────────────────────────
   ipcMain.on(IPC.ZOOM_RESET, () => tabs.resetZoom())
+
+  // ── Print ───────────────────────────────────────────────────────────────
+  ipcMain.on(IPC.PRINT, async () => {
+    const wc = tabs.getActiveWebContents()
+    if (!wc) return
+    const result = await printer.printPage(wc)
+    win?.webContents.send(IPC.PRINT_RESULT, result)
+  })
+
+  ipcMain.on(IPC.PRINT_TO_PDF, async () => {
+    const wc = tabs.getActiveWebContents()
+    if (!wc || !win) return
+    const result = await printer.savePDF(wc, win)
+    win?.webContents.send(IPC.PRINT_RESULT, result)
+  })
 }
 
 

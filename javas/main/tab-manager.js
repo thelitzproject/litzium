@@ -243,6 +243,8 @@ function attachEvents(id, view) {
     else if (ctrl &&  input.shift && input.key === 'Tab')            { event.preventDefault(); cycleTab(-1) }
     else if (ctrl && input.key === 'f')                              { event.preventDefault(); toChrome(IPC.FIND_BAR_OPEN, {}) }
     else if (ctrl && input.key === '0')                              { event.preventDefault(); resetZoom() }
+    else if (ctrl && !input.shift && input.key === 'p')              { event.preventDefault(); toChrome(IPC.PRINT, {}) }
+    else if (ctrl &&  input.shift && input.key === 'p')              { event.preventDefault(); toChrome(IPC.PRINT_TO_PDF, {}) }
     // Ctrl+1–9 tab switching
     else if (ctrl && input.key >= '1' && input.key <= '9') {
       event.preventDefault()
@@ -404,6 +406,11 @@ function sendNavState(id) {
   })
 }
 
+/** Return the WebContents of the currently active tab (for print). */
+function getActiveWebContents() {
+  return tabs.get(activeId)?.view.webContents ?? null
+}
+
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
 module.exports = {
@@ -413,5 +420,6 @@ module.exports = {
   updateAllBounds, setOmniboxOpen, setFindBarOpen,
   findInPage, findNext, stopFindInPage,
   resetZoom, setSearchEngine,
+  getActiveWebContents,
   get size() { return tabs.size },
 }
