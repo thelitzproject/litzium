@@ -2,7 +2,8 @@ const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 const IPC = require('../../dbus/ipc')
 const tabs = require('./tab-manager')
-const CHROME_HEIGHT = 88 
+const { fetchSuggestions } = require('./suggestions')
+const CHROME_HEIGHT = 88
 
 let win = null
 
@@ -41,16 +42,28 @@ function setupIPC() {
   ipcMain.on(IPC.WIN_MINIMIZE,  () => win?.minimize())
   ipcMain.on(IPC.WIN_MAXIMIZE,  () => win?.isMaximized() ? win.unmaximize() : win?.maximize())
   ipcMain.on(IPC.WIN_CLOSE,     () => win?.close())
+
   ipcMain.on(IPC.TAB_NEW,    (_, url)   => tabs.createTab(url))
   ipcMain.on(IPC.TAB_CLOSE,  (_, tabId) => tabs.closeTab(tabId))
   ipcMain.on(IPC.TAB_SWITCH, (_, tabId) => tabs.switchTab(tabId))
+
   ipcMain.on(IPC.NAV_GO,      (_, url) => tabs.navigate(url))
   ipcMain.on(IPC.NAV_BACK,    ()       => tabs.goBack())
   ipcMain.on(IPC.NAV_FORWARD, ()       => tabs.goForward())
   ipcMain.on(IPC.NAV_RELOAD,  ()       => tabs.reload())
   ipcMain.on(IPC.NAV_STOP,    ()       => tabs.stop())
   ipcMain.on(IPC.NAV_HOME,    ()       => tabs.navigate('litzium://newtab'))
+
   ipcMain.on(IPC.DEVTOOLS_OPEN, () => tabs.openDevTools())
+
+  // ── Autocomplete suggestions (invokeable) ──────────────────────────────
+  ipcMain.handle(IPC.SUGGESTIONS_GET, async (_, { query, provider } = {}) => {
+    return fetchSuggestions(query, provider)
+  })
+
+  // ── Omnibox expand / collapse (push WebContentsView down for dropdown) ─
+  ipcMain.on(IPC.OMNIBOX_EXPAND,   (_, { height } = {}) => tabs.setOmniboxOpen(true,  height ?? 0))
+  ipcMain.on(IPC.OMNIBOX_COLLAPSE, ()                   => tabs.setOmniboxOpen(false, 0))
 }
 
 

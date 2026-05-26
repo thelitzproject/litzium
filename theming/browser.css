@@ -311,3 +311,91 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   transition: none;
   animation: progress-slide 1.1s ease-in-out infinite;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/*  SUGGESTIONS DROPDOWN                                                       */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+#suggestions-dropdown {
+  position: fixed;
+  /* JS sets top / left / width to align with the omnibox */
+  z-index: 1000;
+  background: var(--bg-navbar);
+  border: 1.5px solid var(--border-focus);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  /* fade-in */
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.1s, transform 0.1s;
+  animation: sugg-appear 0.1s ease;
+}
+
+#suggestions-dropdown[hidden] { display: none !important; }
+
+@keyframes sugg-appear {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Individual suggestion item ─────────────────────────────────────────── */
+
+.sugg-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  height: 36px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-ui);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.08s;
+  user-select: none;
+}
+
+.sugg-item:hover,
+.sugg-item.active {
+  background: rgba(124, 131, 247, 0.12);
+}
+
+.sugg-item.active {
+  outline: none;
+}
+
+/* Search icon on the left */
+.sugg-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+/* Right arrow — fill selected text into address bar */
+.sugg-arrow {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--text-disabled);
+  opacity: 0;
+  transition: opacity 0.08s;
+}
+
+.sugg-item:hover .sugg-arrow,
+.sugg-item.active .sugg-arrow { opacity: 1; }
+
+/* Matched portion bold */
+.sugg-match { font-weight: 600; }
+
+/* ─── Divider between suggestion groups (future use) ─────────────────────── */
+.sugg-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 2px 10px;
+}

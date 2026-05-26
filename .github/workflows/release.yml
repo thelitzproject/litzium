@@ -1,0 +1,76 @@
+name: Release
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Runs whenever a version tag (v*) is pushed, e.g. git tag v1.15.101.0 && git push --tags
+# Also supports manual dispatch from the Actions tab.
+# Builds a Windows NSIS installer and attaches it to the GitHub Release.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag / version to build (e.g. v1.15.101.0)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write   # needed to create/update Releases and upload assets
+
+jobs:
+  build-windows:
+    name: Build Windows installer
+    runs-on: windows-latest
+
+    steps:
+      # ── 1. Checkout ─────────────────────────────────────────────────────────
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      # ── 2. Node.js ──────────────────────────────────────────────────────────
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      # ── 3. Dependencies ─────────────────────────────────────────────────────
+      - name: Install dependencies
+        run: npm ci
+
+      # ── 4. Build ─────────────────────────────────────────────────────────────
+      - name: Build Windows installer
+        run: npm run build:win
+        env:
+          # electron-builder uses this to publish to GitHub Releases
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 5. Find the installer ────────────────────────────────────────────────
+      - name: Locate installer
+        id: find_exe
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path dist -Filter "*.exe" -Recurse |
+                 Where-Object { $_.Name -notlike "*unpacked*" } |
+                 Select-Object -First 1
+          if (-not $exe) { Write-Error "No .exe found in dist/"; exit 1 }
+          Write-Host "Found: $($exe.FullName)"
+          "path=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "name=$($exe.Name)"     | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      # ── 6. Create / update the GitHub Release ────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Use the pushed tag; fall back to the manual input
+          tag_name: ${{ github.ref_name || inputs.tag }}
+          name: "Litzium ${{ github.ref_name || inputs.tag }}"
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') || contains(github.ref_name, '-rc') }}
+          generate_release_notes: true
+          files: ${{ steps.find_exe.outputs.path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

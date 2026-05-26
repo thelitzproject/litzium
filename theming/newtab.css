@@ -67,7 +67,8 @@ html, body {
 }
 
 /* ─── Search bar ─────────────────────────────────────────────────────────── */
-.nt-search { width: 100%; max-width: 560px; }
+.nt-search-container { width: 100%; max-width: 560px; position: relative; }
+.nt-search { width: 100%; }
 
 .nt-search-wrap {
   display: flex;
@@ -106,6 +107,74 @@ html, body {
 }
 
 #nt-input::placeholder { color: var(--sub); }
+
+/* ─── Autocomplete dropdown ──────────────────────────────────────────────── */
+
+#nt-suggestions {
+  position: absolute;
+  top: calc(100% - 2px);   /* overlap the search bar bottom border */
+  left: 0;
+  right: 0;
+  background: rgba(22, 22, 38, 0.97);
+  border: 1.5px solid var(--input-focus);
+  border-top: none;
+  border-radius: 0 0 20px 20px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+  z-index: 10;
+  animation: nt-sugg-appear 0.1s ease;
+}
+
+#nt-suggestions[hidden] { display: none !important; }
+
+@keyframes nt-sugg-appear {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.nt-sugg-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+  height: 38px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 14px;
+  font-family: var(--font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.08s;
+  user-select: none;
+}
+
+.nt-sugg-item:hover,
+.nt-sugg-item.active {
+  background: rgba(124, 131, 247, 0.14);
+}
+
+.nt-sugg-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--sub);
+}
+
+.nt-sugg-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+
+.nt-sugg-text strong { font-weight: 700; color: var(--accent); }
+
+/* When dropdown is visible, square the search bar bottom corners */
+.nt-search-wrap.has-suggestions {
+  border-radius: 20px 20px 0 0;
+  border-bottom-color: transparent;
+}
 
 /* ─── Shortcuts grid ─────────────────────────────────────────────────────── */
 .nt-shortcuts {

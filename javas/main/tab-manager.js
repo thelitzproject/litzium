@@ -7,8 +7,9 @@ const { WebContentsView } = require('electron')
 const path = require('path')
 const IPC = require('../../dbus/ipc')
 
-let win          = null
-let chromeHeight = 88
+let win            = null
+let chromeHeight   = 88   // base chrome height set during init
+let expandedHeight = 88   // current effective top offset (may grow for dropdown)
 
 /** @type {Map<string, Tab>} */
 const tabs  = new Map()
@@ -32,13 +33,27 @@ class Tab {
 // ─── Init / bounds ────────────────────────────────────────────────────────────
 
 function init(window, height) {
-  win          = window
-  chromeHeight = height
+  win            = window
+  chromeHeight   = height
+  expandedHeight = height
 }
 
 function contentBounds() {
   const b = win.getContentBounds()
-  return { x: 0, y: chromeHeight, width: b.width, height: Math.max(0, b.height - chromeHeight) }
+  return { x: 0, y: expandedHeight, width: b.width, height: Math.max(0, b.height - expandedHeight) }
+}
+
+/**
+ * Called when the omnibox suggestions dropdown opens or closes.
+ * Shifts the active WebContentsView downward while the dropdown is visible
+ * so it doesn't render on top of the suggestion list.
+ *
+ * @param {boolean} isOpen
+ * @param {number}  extraHeight  — extra pixels to add below normal chrome height
+ */
+function setOmniboxOpen(isOpen, extraHeight = 0) {
+  expandedHeight = isOpen ? chromeHeight + extraHeight : chromeHeight
+  updateAllBounds()
 }
 
 function applyBounds(view) {
@@ -53,14 +68,24 @@ function updateAllBounds() {
 // ─── Create ───────────────────────────────────────────────────────────────────
 
 function createTab(url = 'litzium://newtab') {
-  const id   = String(idCounter++)
+  const id = String(idCounter++)
+
+  // Trusted internal pages that need IPC (e.g. suggestions) get a preload.
+  // External / unknown URLs keep the fully-sandboxed profile.
+  const targetPage   = INTERNAL_PAGES[url]
+  const preloadPath  = targetPage?.preload
+    ? path.join(PROJECT_ROOT, targetPage.preload)
+    : undefined
+
   const view = new WebContentsView({
     webPreferences: {
-      nodeIntegration:            false,
-      contextIsolation:           true,
-      sandbox:                    true,
-      webSecurity:                true,
+      nodeIntegration:             false,
+      contextIsolation:            true,
+      // sandbox must be false when a preload needs require(); stays true otherwise
+      sandbox:                     !preloadPath,
+      webSecurity:                 true,
       allowRunningInsecureContent: false,
+      ...(preloadPath ? { preload: preloadPath } : {}),
     },
   })
 
@@ -158,17 +183,22 @@ function attachEvents(id, view) {
 // Maps litzium:// URLs → relative paths under pages/
 // Add a new entry here whenever a new internal page is created.
 
+// Pages that need IPC access (getSuggestions, etc.) receive the page preload
+// and run with sandbox:false.  All other internal pages remain fully sandboxed.
+const PAGE_PRELOAD = 'javas/preload/page.js'
+
 const INTERNAL_PAGES = {
-  'litzium://newtab':     { file: 'pages/newtab/index.html',   title: 'New Tab' },
-  'litzium://version':    { file: 'pages/version/index.html',  title: 'Version' },
-  'litzium://litz-urls':  { file: 'pages/litz-urls/index.html',title: 'litzium URLs' },
-  'litzium://about':      { file: 'pages/about/index.html',    title: 'About Litzium' },
-  'litzium://settings':   { file: 'pages/settings/index.html', title: 'Settings' },
-  'litzium://flags':      { file: 'pages/flags/index.html',    title: 'Flags' },
-  'litzium://debug':      { file: 'pages/debug/index.html',    title: 'Debug' },
-  'litzium://history':    { file: 'pages/history/index.html',  title: 'History' },
-  'litzium://bookmarks':  { file: 'pages/bookmarks/index.html',title: 'Bookmarks' },
-  'litzium://downloads':  { file: 'pages/downloads/index.html',title: 'Downloads' },
+  'litzium://newtab':      { file: 'pages/newtab/index.html',      title: 'New Tab',       preload: PAGE_PRELOAD },
+  'litzium://version':     { file: 'pages/version/index.html',     title: 'Version' },
+  'litzium://litz-urls':   { file: 'pages/litz-urls/index.html',   title: 'litzium URLs' },
+  'litzium://about':       { file: 'pages/about/index.html',       title: 'About Litzium' },
+  'litzium://settings':    { file: 'pages/settings/index.html',    title: 'Settings' },
+  'litzium://flags':       { file: 'pages/flags/index.html',       title: 'Flags' },
+  'litzium://debug':       { file: 'pages/debug/index.html',       title: 'Debug' },
+  'litzium://history':     { file: 'pages/history/index.html',     title: 'History' },
+  'litzium://bookmarks':   { file: 'pages/bookmarks/index.html',   title: 'Bookmarks' },
+  'litzium://downloads':   { file: 'pages/downloads/index.html',   title: 'Downloads' },
+  'litzium://predictions': { file: 'pages/predictions/index.html', title: 'Predictions',   preload: PAGE_PRELOAD },
 }
 
 // Root of the project (two levels up from javas/main/)
@@ -291,4 +321,4 @@ function sendNavState(id) {
 
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
-module.exports = { init, createTab, closeTab, switchTab, navigate, goBack, goForward, reload, stop, openDevTools, updateAllBounds }
+module.exports = { init, createTab, closeTab, switchTab, navigate, goBack, goForward, reload, stop, openDevTools, updateAllBounds, setOmniboxOpen }

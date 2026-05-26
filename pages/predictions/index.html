@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Predictions — Litzium</title>
+  <link rel="stylesheet" href="../../theming/variables.css">
+  <link rel="stylesheet" href="../../theming/internal.css">
+  <style>
+    /* ── Page-specific overrides ───────────────────────────────────────── */
+    .pred-hero {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .pred-hero-icon {
+      width: 40px;
+      height: 40px;
+      background: rgba(124,131,247,0.15);
+      border: 1px solid rgba(124,131,247,0.3);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .pred-hero-icon svg { width: 20px; height: 20px; color: var(--accent); }
+
+    /* ── Search input ──────────────────────────────────────────────────── */
+    .pred-search-wrap {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    #pred-input {
+      flex: 1;
+      background: var(--bg-input, rgba(255,255,255,0.06));
+      border: 1.5px solid var(--border-subtle);
+      border-radius: var(--radius-btn);
+      color: var(--text-primary);
+      font-family: var(--font-ui);
+      font-size: 15px;
+      padding: 0 14px;
+      height: 42px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    #pred-input:focus { border-color: var(--border-focus); }
+    #pred-input::placeholder { color: var(--text-disabled); }
+
+    /* ── Provider toggle row ───────────────────────────────────────────── */
+    .pred-providers {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    .pred-provider-btn {
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: 1.5px solid var(--border-subtle);
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+    }
+    .pred-provider-btn:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+    .pred-provider-btn.active {
+      background: rgba(124,131,247,0.18);
+      border-color: rgba(124,131,247,0.5);
+      color: var(--accent);
+    }
+
+    /* ── Suggestions list ──────────────────────────────────────────────── */
+    #pred-results {
+      min-height: 80px;
+    }
+
+    .pred-sugg-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: var(--radius-btn);
+      color: var(--text-primary);
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.08s;
+      border: 1px solid transparent;
+    }
+    .pred-sugg-item:hover {
+      background: rgba(124,131,247,0.1);
+      border-color: rgba(124,131,247,0.2);
+    }
+    .pred-sugg-item svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--text-secondary); }
+    .pred-sugg-text     { flex: 1; }
+    .pred-sugg-match    { font-weight: 700; color: var(--accent); }
+
+    .pred-empty {
+      text-align: center;
+      color: var(--text-secondary);
+      padding: 32px 0;
+      font-size: 13px;
+    }
+
+    .pred-loading {
+      text-align: center;
+      color: var(--text-secondary);
+      padding: 24px 0;
+      font-size: 13px;
+    }
+
+    .pred-loading::after {
+      content: '';
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(124,131,247,0.3);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: pred-spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-left: 8px;
+    }
+    @keyframes pred-spin { to { transform: rotate(360deg); } }
+
+    /* ── Stats bar ─────────────────────────────────────────────────────── */
+    .pred-stats-bar {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin: 20px 0 0;
+      padding: 14px 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-btn);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .pred-stat strong {
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pred-stat-latency { color: var(--accent); }
+    .pred-stat-latency.slow { color: #f7a27c; }
+
+    /* ── Raw JSON panel ────────────────────────────────────────────────── */
+    details.pred-raw {
+      margin-top: 20px;
+    }
+    details.pred-raw summary {
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text-secondary);
+      user-select: none;
+      padding: 4px 0;
+    }
+    details.pred-raw summary:hover { color: var(--text-primary); }
+
+    #pred-raw-json {
+      margin-top: 8px;
+      padding: 12px 16px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-btn);
+      font-family: var(--font-mono, 'Consolas', monospace);
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: pre;
+      overflow-x: auto;
+      max-height: 280px;
+    }
+  </style>
+</head>
+<body>
+<div class="ip-page">
+
+  <div class="pred-hero">
+    <div class="pred-hero-icon">
+      <svg viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
+      </svg>
+    </div>
+    <div>
+      <h1 style="font-size:20px;font-weight:600;margin-bottom:2px">Predictions</h1>
+      <p style="font-size:13px;color:var(--text-secondary)">Live search autocomplete tester &mdash; Google · DuckDuckGo · Bing</p>
+    </div>
+    <span class="ip-badge experimental" style="margin-left:auto">Dev</span>
+  </div>
+
+  <div class="ip-card">
+
+    <!-- Provider picker -->
+    <div class="pred-providers" id="pred-providers">
+      <!-- Populated by JS -->
+    </div>
+
+    <!-- Search input -->
+    <div class="pred-search-wrap">
+      <input
+        id="pred-input"
+        type="text"
+        placeholder="Type a query to see predictions…"
+        autocomplete="off"
+        spellcheck="false"
+        autofocus
+      >
+    </div>
+
+    <!-- Suggestion results -->
+    <div id="pred-results">
+      <p class="pred-empty">Start typing to fetch predictions.</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="pred-stats-bar" id="pred-stats" style="display:none">
+      <span class="pred-stat">Provider: <strong id="stat-provider">—</strong></span>
+      <span class="pred-stat">Results: <strong id="stat-count">0</strong></span>
+      <span class="pred-stat">Latency: <strong id="stat-latency" class="pred-stat-latency">—</strong></span>
+      <span class="pred-stat">Queries: <strong id="stat-queries">0</strong></span>
+      <span class="pred-stat">Avg latency: <strong id="stat-avg">—</strong></span>
+    </div>
+
+    <!-- Raw JSON -->
+    <details class="pred-raw" id="pred-raw-details" style="display:none">
+      <summary>Raw response JSON</summary>
+      <pre id="pred-raw-json"></pre>
+    </details>
+
+  </div><!-- .ip-card -->
+
+  <!-- Info card -->
+  <div class="ip-card" style="margin-top:16px">
+    <h3 class="ip-row" style="font-size:13px;font-weight:600;margin-bottom:12px">How it works</h3>
+    <div class="ip-row" style="font-size:13px;color:var(--text-secondary);line-height:1.6">
+      Requests are made from the <strong style="color:var(--text-primary)">main process</strong>
+      via Electron&rsquo;s <code style="color:var(--accent)">net.fetch</code> API, bypassing
+      browser CORS restrictions. Suggestions are debounced (200 ms) and streamed back via IPC.
+      The same pipeline powers the omnibox and the new-tab search bar.
+    </div>
+    <table class="ip-table" style="margin-top:16px">
+      <thead><tr><th>Provider</th><th>API endpoint</th><th>Format</th></tr></thead>
+      <tbody>
+        <tr><td>Google</td><td><code>suggestqueries.google.com/complete/search?client=firefox</code></td><td>OpenSearch JSON</td></tr>
+        <tr><td>DuckDuckGo</td><td><code>duckduckgo.com/ac/?type=list</code></td><td>OpenSearch JSON</td></tr>
+        <tr><td>Bing</td><td><code>api.bing.com/osjson.aspx</code></td><td>OpenSearch JSON</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div><!-- .ip-page -->
+
+<script>
+'use strict'
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+const api = (typeof window.litzPagesAPI !== 'undefined') ? window.litzPagesAPI : null
+
+if (!api) {
+  document.getElementById('pred-results').innerHTML =
+    '<p class="pred-empty" style="color:#f7a27c">⚠ Preload API not available — open this page as litzium://predictions</p>'
+}
+
+let provider   = 'google'
+let debounce   = null
+let queryCount = 0
+let totalMs    = 0
+let lastResult = null
+
+// ─── Provider buttons ─────────────────────────────────────────────────────────
+
+const providers = api?.providers ?? ['google', 'ddg', 'bing']
+const names     = api?.providerNames ?? { google: 'Google', ddg: 'DuckDuckGo', bing: 'Bing' }
+const container = document.getElementById('pred-providers')
+
+providers.forEach(id => {
+  const btn = document.createElement('button')
+  btn.className = 'pred-provider-btn' + (id === provider ? ' active' : '')
+  btn.textContent = names[id] ?? id
+  btn.dataset.id = id
+  btn.addEventListener('click', () => {
+    provider = id
+    container.querySelectorAll('.pred-provider-btn').forEach(b => b.classList.toggle('active', b.dataset.id === id))
+    const q = document.getElementById('pred-input').value.trim()
+    if (q) runQuery(q)
+  })
+  container.appendChild(btn)
+})
+
+// ─── Input handler ────────────────────────────────────────────────────────────
+
+document.getElementById('pred-input').addEventListener('input', e => {
+  clearTimeout(debounce)
+  const q = e.target.value.trim()
+  if (!q) {
+    showEmpty()
+    updateStats(null)
+    return
+  }
+  showLoading()
+  debounce = setTimeout(() => runQuery(q), 200)
+})
+
+// ─── Query ────────────────────────────────────────────────────────────────────
+
+async function runQuery(q) {
+  if (!api) return
+  showLoading()
+  const result = await api.getSuggestions(q, provider)
+  // Stale guard
+  if (document.getElementById('pred-input').value.trim() !== q) return
+  lastResult = { query: q, ...result }
+  queryCount++
+  totalMs += result.latencyMs
+  renderResults(result.suggestions, q)
+  updateStats(result)
+  renderRaw(result)
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+
+const SEARCH_SVG = `<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>`
+
+function boldMatch(text, query) {
+  if (!query) return escHtml(text)
+  const idx = text.toLowerCase().indexOf(query.toLowerCase())
+  if (idx < 0) return escHtml(text)
+  return (
+    escHtml(text.slice(0, idx)) +
+    `<span class="pred-sugg-match">${escHtml(text.slice(idx, idx + query.length))}</span>` +
+    escHtml(text.slice(idx + query.length))
+  )
+}
+
+function renderResults(items, query) {
+  const el = document.getElementById('pred-results')
+  if (!items.length) {
+    el.innerHTML = '<p class="pred-empty">No suggestions returned.</p>'
+    return
+  }
+  el.innerHTML = items.map(s => `
+    <div class="pred-sugg-item">
+      ${SEARCH_SVG}
+      <span class="pred-sugg-text">${boldMatch(s, query)}</span>
+    </div>`).join('')
+}
+
+function showEmpty()   { document.getElementById('pred-results').innerHTML = '<p class="pred-empty">Start typing to fetch predictions.</p>' }
+function showLoading() { document.getElementById('pred-results').innerHTML = '<p class="pred-loading">Fetching</p>' }
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+
+function updateStats(result) {
+  const bar = document.getElementById('pred-stats')
+  if (!result) { bar.style.display = 'none'; return }
+  bar.style.display = 'flex'
+
+  document.getElementById('stat-provider').textContent = names[provider] ?? provider
+  document.getElementById('stat-count').textContent    = result.suggestions.length
+  document.getElementById('stat-queries').textContent  = queryCount
+
+  const latEl = document.getElementById('stat-latency')
+  latEl.textContent = `${result.latencyMs} ms`
+  latEl.className = 'pred-stat-latency' + (result.latencyMs > 500 ? ' slow' : '')
+
+  const avg = queryCount ? Math.round(totalMs / queryCount) : 0
+  document.getElementById('stat-avg').textContent = `${avg} ms`
+}
+
+// ─── Raw JSON ─────────────────────────────────────────────────────────────────
+
+function renderRaw(result) {
+  const details = document.getElementById('pred-raw-details')
+  const pre     = document.getElementById('pred-raw-json')
+  details.style.display = ''
+  pre.textContent = JSON.stringify(result, null, 2)
+}
+
+// ─── Util ─────────────────────────────────────────────────────────────────────
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+</script>
+</body>
+</html>

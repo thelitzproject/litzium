@@ -157,20 +157,163 @@ function focusOmnibox() {
   addressBar.select()
 }
 
-addressBar.addEventListener('focus', () => addressBar.select())
+// ─── Suggestions dropdown ─────────────────────────────────────────────────────
+
+const suggestionsDropdown = $('suggestions-dropdown')
+let suggItems      = []   // current suggestion strings
+let activeSuggIdx  = -1   // keyboard-selected index (-1 = none)
+let originalInput  = ''   // value before arrow-key navigation
+let suggDebounce   = null
+
+const ITEM_H      = 36   // px — must match CSS
+const SUGG_LIMIT  = 8
+
+const SEARCH_SVG = `<svg class="sugg-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+  <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
+</svg>`
+
+const ARROW_SVG = `<svg class="sugg-arrow" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+  <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+</svg>`
+
+function positionDropdown() {
+  const rect = omnibox.getBoundingClientRect()
+  suggestionsDropdown.style.left  = `${rect.left}px`
+  suggestionsDropdown.style.width = `${rect.width}px`
+  suggestionsDropdown.style.top   = `${rect.bottom - 1}px`  // -1 to overlap omnibox bottom border
+}
+
+function boldMatch(text, query) {
+  if (!query) return escHtml(text)
+  const idx = text.toLowerCase().indexOf(query.toLowerCase())
+  if (idx < 0) return escHtml(text)
+  return (
+    escHtml(text.slice(0, idx)) +
+    `<span class="sugg-match">${escHtml(text.slice(idx, idx + query.length))}</span>` +
+    escHtml(text.slice(idx + query.length))
+  )
+}
+
+function renderSuggestions(items, query) {
+  suggestionsDropdown.innerHTML = ''
+  items.forEach((text, i) => {
+    const div = document.createElement('div')
+    div.className = 'sugg-item'
+    div.setAttribute('role', 'option')
+    div.dataset.idx = i
+    div.innerHTML = `${SEARCH_SVG}<span style="flex:1;overflow:hidden;text-overflow:ellipsis">${boldMatch(text, query)}</span>${ARROW_SVG}`
+
+    div.addEventListener('mousedown', e => {
+      e.preventDefault()          // prevent blur from firing first
+      commitSuggestion(text)
+    })
+    div.addEventListener('mousemove', () => setActiveIdx(i, false))
+
+    suggestionsDropdown.appendChild(div)
+  })
+}
+
+function setActiveIdx(idx, updateInput = true) {
+  const prev = suggestionsDropdown.querySelector('.sugg-item.active')
+  if (prev) prev.classList.remove('active')
+  activeSuggIdx = idx
+  if (idx < 0 || idx >= suggItems.length) {
+    if (updateInput) addressBar.value = originalInput
+    return
+  }
+  const el = suggestionsDropdown.querySelector(`[data-idx="${idx}"]`)
+  if (el) el.classList.add('active')
+  if (updateInput) addressBar.value = suggItems[idx]
+}
+
+function showDropdown(items, query) {
+  if (!items.length) { hideDropdown(); return }
+  suggItems     = items
+  activeSuggIdx = -1
+  originalInput = query
+  renderSuggestions(items, query)
+  positionDropdown()
+  suggestionsDropdown.hidden = false
+
+  const dropH = items.length * ITEM_H
+  window.litzium.expandOmnibox(dropH + 2)   // +2 for border
+}
+
+function hideDropdown() {
+  if (suggestionsDropdown.hidden) return
+  suggestionsDropdown.hidden = true
+  suggestionsDropdown.innerHTML = ''
+  suggItems     = []
+  activeSuggIdx = -1
+  window.litzium.collapseOmnibox()
+}
+
+function commitSuggestion(text) {
+  addressBar.value = text
+  hideDropdown()
+  window.litzium.navigate(text)
+  addressBar.blur()
+}
+
+// Debounced input handler
+addressBar.addEventListener('input', () => {
+  clearTimeout(suggDebounce)
+  const q = addressBar.value
+  if (!q.trim() || q.startsWith('litzium://')) { hideDropdown(); return }
+  suggDebounce = setTimeout(async () => {
+    const { suggestions } = await window.litzium.getSuggestions(q)
+    // Guard: input may have changed during the async call
+    if (addressBar.value !== q) return
+    showDropdown(suggestions.slice(0, SUGG_LIMIT), q)
+  }, 200)
+})
+
+addressBar.addEventListener('focus', () => {
+  originalInput = addressBar.value
+  addressBar.select()
+})
 
 addressBar.addEventListener('keydown', e => {
+  if (!suggestionsDropdown.hidden) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveIdx(Math.min(activeSuggIdx + 1, suggItems.length - 1))
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIdx(activeSuggIdx <= 0 ? -1 : activeSuggIdx - 1)
+      return
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault()
+      if (activeSuggIdx >= 0 && activeSuggIdx < suggItems.length) {
+        addressBar.value = suggItems[activeSuggIdx]
+        setActiveIdx(-1, false)
+      }
+      return
+    }
+  }
+
   if (e.key === 'Enter') {
+    clearTimeout(suggDebounce)
     const v = addressBar.value.trim()
+    hideDropdown()
     if (v) window.litzium.navigate(v)
     addressBar.blur()
   } else if (e.key === 'Escape') {
-    addressBar.blur()
+    if (!suggestionsDropdown.hidden) {
+      hideDropdown()
+      addressBar.value = originalInput
+    } else {
+      addressBar.blur()
+    }
   }
 })
 
-// Restore display URL when omnibox loses focus
 addressBar.addEventListener('blur', () => {
+  // Small delay so mousedown on a suggestion fires first
+  setTimeout(hideDropdown, 120)
 })
 
 function setPageIcon(url, favicon, isLoading) {
