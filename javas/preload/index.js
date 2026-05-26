@@ -19,6 +19,9 @@ const INBOUND = [
   IPC.FIND_BAR_OPEN,
   IPC.FIND_BAR_CLOSE,
   IPC.ZOOM_CHANGED,
+  IPC.PRINT,
+  IPC.PRINT_TO_PDF,
+  IPC.PRINT_RESULT,
 ]
 
 contextBridge.exposeInMainWorld('litzium', {
@@ -63,6 +66,10 @@ contextBridge.exposeInMainWorld('litzium', {
 
   // ── Zoom ─────────────────────────────────────────────────────────────
   resetZoom: () => ipcRenderer.send(IPC.ZOOM_RESET),
+
+  // ── Print ─────────────────────────────────────────────────────────────
+  printPage:  () => ipcRenderer.send(IPC.PRINT),
+  printToPDF: () => ipcRenderer.send(IPC.PRINT_TO_PDF),
 
   // ── IPC event subscription ───────────────────────────────────────────
   /**
