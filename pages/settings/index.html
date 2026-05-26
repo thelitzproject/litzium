@@ -308,7 +308,7 @@
 
 </div>
 <script>
-  // Tab switching
+  // ── Tab switching ───────────────────────────────────────────────────────────
   document.querySelectorAll('.settings-tab').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'))
@@ -316,6 +316,70 @@
       btn.classList.add('active')
       document.getElementById('panel-' + btn.dataset.panel).classList.add('active')
     })
+  })
+
+  // ── Settings persistence ────────────────────────────────────────────────────
+  const api = window.litzPagesAPI
+
+  // Map of setting key → query selector(s) of the control
+  const BINDINGS = {
+    showTabFavicons:         '[data-key="showTabFavicons"]',
+    openNewTabsInBackground: '[data-key="openNewTabsInBackground"]',
+    confirmCloseTabs:        '[data-key="confirmCloseTabs"]',
+    askDownloadLocation:     '[data-key="askDownloadLocation"]',
+    browserTheme:            '[data-key="browserTheme"]',
+    newtabBackground:        '[data-key="newtabBackground"]',
+    saveHistory:             '[data-key="saveHistory"]',
+    searchEngine:            '[data-key="searchEngine"]',
+    suggestionsEnabled:      '[data-key="suggestionsEnabled"]',
+    startupBehavior:         '[data-key="startupBehavior"]',
+  }
+
+  // Add data-key attributes to existing controls
+  const keyMap = [
+    ['showTabFavicons',          '#panel-general input[type=checkbox]:nth-of-type(1)'],
+    ['openNewTabsInBackground',  '#panel-general input[type=checkbox]:nth-of-type(2)'],
+    ['confirmCloseTabs',         '#panel-general input[type=checkbox]:nth-of-type(3)'],
+    ['askDownloadLocation',      '#panel-general input[type=checkbox]:nth-of-type(4)'],
+    ['browserTheme',             '#panel-appearance select:nth-of-type(1)'],
+    ['newtabBackground',         '#panel-appearance select:nth-of-type(2)'],
+    ['saveHistory',              '#panel-privacy input[type=checkbox]:nth-of-type(1)'],
+    ['searchEngine',             '#panel-search select:nth-of-type(1)'],
+    ['suggestionsEnabled',       '#panel-search input[type=checkbox]:nth-of-type(1)'],
+  ]
+
+  keyMap.forEach(([key, sel]) => {
+    const el = document.querySelector(sel)
+    if (el) el.dataset.key = key
+  })
+
+  // Load and apply stored settings
+  async function applySettings(s) {
+    Object.entries(s).forEach(([key, value]) => {
+      const el = document.querySelector(`[data-key="${key}"]`)
+      if (!el) return
+      if (el.type === 'checkbox' || el.type === 'radio') {
+        el.checked = Boolean(value)
+      } else {
+        el.value = String(value)
+      }
+    })
+  }
+
+  async function init() {
+    if (!api) return
+    const s = await api.getSettings()
+    applySettings(s)
+  }
+  init()
+
+  // Persist changes immediately
+  document.addEventListener('change', e => {
+    const el = e.target
+    const key = el.dataset.key
+    if (!key || !api) return
+    const value = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value
+    api.setSetting(key, value)
   })
 </script>
 </body>

@@ -79,11 +79,10 @@
 
 </div>
 <script>
-  // Downloads are tracked in the main process via modules/downloads.js.
-  // This page listens for IPC events pushed via the preload; for now it renders
-  // whatever is in sessionStorage (populated by the preload when available).
+  const api = window.litzPagesAPI
+  const ch  = api?.channels
 
-  const CACHE_KEY = 'litzium:downloads-session'
+  const allDownloads = new Map()   // id → record
 
   function extIcon(filename) {
     const ext = (filename || '').split('.').pop().toLowerCase()
@@ -103,14 +102,40 @@
     if (!bytes) return ''
     if (bytes < 1024) return bytes + ' B'
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-    return (bytes / 1024 / 1024).toFixed(1) + ' MB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
-  function render(downloads) {
-    const container = document.getElementById('dl-content')
-    container.innerHTML = ''
+  function rowHtml(d) {
+    const pct  = d.total ? Math.round((d.received / d.total) * 100) : 0
+    const meta = [
+      d.total ? fmtSize(d.total) : '',
+      d.state === 'progressing' ? pct + '%' : '',
+    ].filter(Boolean).join(' · ')
 
-    if (downloads.length === 0) {
+    return `
+      <div class="dl-icon">${extIcon(d.filename)}</div>
+      <div class="dl-body">
+        <div class="dl-name">${escHtml(d.filename)}</div>
+        <div class="dl-meta">${escHtml(meta || d.url)}</div>
+        ${d.state === 'progressing' ? `
+          <div class="dl-progress">
+            <div class="dl-progress-fill" id="fill-${d.id}" style="width:${pct}%"></div>
+          </div>` : ''}
+      </div>
+      <span class="dl-status ${d.state}">${d.state}</span>
+      <div class="dl-actions">
+        ${d.state === 'completed'
+          ? `<button class="ip-btn dl-open" data-id="${d.id}">Open</button>
+             <button class="ip-btn dl-show" data-id="${d.id}">Folder</button>`
+          : ''}
+      </div>`
+  }
+
+  function renderAll() {
+    const container = document.getElementById('dl-content')
+    const list = Array.from(allDownloads.values()).reverse()
+
+    if (list.length === 0) {
       container.innerHTML = `
         <div class="ip-empty">
           <div class="ip-empty-icon">⬇️</div>
@@ -119,53 +144,56 @@
       return
     }
 
+    container.innerHTML = ''
     const card = document.createElement('div')
     card.className = 'ip-card'
-
-    downloads.forEach(d => {
+    list.forEach(d => {
       const row = document.createElement('div')
       row.className = 'dl-row'
       row.id = 'dl-' + d.id
-
-      const pct = d.total ? Math.round((d.received / d.total) * 100) : 0
-      const meta = [
-        d.total ? fmtSize(d.total) : '',
-        d.state === 'progressing' ? pct + '%' : '',
-        d.state === 'completed' ? 'Done' : '',
-      ].filter(Boolean).join(' · ')
-
-      row.innerHTML = `
-        <div class="dl-icon">${extIcon(d.filename)}</div>
-        <div class="dl-body">
-          <div class="dl-name">${escHtml(d.filename)}</div>
-          <div class="dl-meta">${escHtml(meta || d.url)}</div>
-          ${d.state === 'progressing' ? `
-            <div class="dl-progress">
-              <div class="dl-progress-fill" style="width:${pct}%"></div>
-            </div>` : ''}
-        </div>
-        <span class="dl-status ${d.state}">${d.state}</span>
-        <div class="dl-actions">
-          ${d.state === 'completed'
-            ? `<button class="ip-btn" title="Open file">Open</button>
-               <button class="ip-btn" title="Show in folder">Folder</button>`
-            : ''}
-        </div>`
-
+      row.innerHTML = rowHtml(d)
       card.appendChild(row)
     })
-
     container.appendChild(card)
+
+    // Wire action buttons
+    container.querySelectorAll('.dl-open').forEach(btn =>
+      btn.addEventListener('click', () => api?.openDownload(btn.dataset.id)))
+    container.querySelectorAll('.dl-show').forEach(btn =>
+      btn.addEventListener('click', () => api?.showDownload(btn.dataset.id)))
   }
 
-  function load() {
-    try { return JSON.parse(sessionStorage.getItem(CACHE_KEY) || '[]') } catch { return [] }
+  // Initial load
+  async function init() {
+    if (api) {
+      const existing = await api.getDownloads()
+      existing.forEach(d => allDownloads.set(d.id, d))
+    }
+    renderAll()
   }
+  init()
 
-  render(load())
+  // Live events
+  if (api) {
+    api.on(ch.DOWNLOAD_STARTED, d => {
+      allDownloads.set(d.id, d)
+      renderAll()
+    })
 
-  // Listen for live download events pushed by the preload (when wired up)
-  // window.litzium?.on('download-started', ...) etc.
+    api.on(ch.DOWNLOAD_UPDATED, ({ id, state, received, total }) => {
+      const d = allDownloads.get(id)
+      if (d) { d.state = state; d.received = received; d.total = total }
+      // Update progress bar in-place if possible
+      const fill = document.getElementById('fill-' + id)
+      if (fill && total) fill.style.width = Math.round((received / total) * 100) + '%'
+    })
+
+    api.on(ch.DOWNLOAD_DONE, ({ id, state, savePath }) => {
+      const d = allDownloads.get(id)
+      if (d) { d.state = state; d.savePath = savePath }
+      renderAll()
+    })
+  }
 
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')

@@ -85,15 +85,7 @@
 
 </div>
 <script>
-  const CACHE_KEY = 'litzium:bookmarks-cache'
-
-  function load() {
-    try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '[]') } catch { return [] }
-  }
-
-  function save(list) {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(list))
-  }
+  const api = window.litzPagesAPI
 
   function relDate(ts) {
     const d = new Date(ts)
@@ -108,7 +100,7 @@
       container.innerHTML = `
         <div class="ip-empty">
           <div class="ip-empty-icon">🔖</div>
-          <p>No bookmarks yet.<br>Bookmark pages using the address bar star icon.</p>
+          <p>No bookmarks yet.<br>Bookmark pages using the ☆ star icon in the address bar.</p>
         </div>`
       return
     }
@@ -131,11 +123,11 @@
         </div>
         <button class="bm-delete" title="Remove bookmark">✕</button>`
 
-      a.querySelector('.bm-delete').addEventListener('click', e => {
-        e.preventDefault()
-        e.stopPropagation()
+      a.querySelector('.bm-delete').addEventListener('click', async ev => {
+        ev.preventDefault()
+        ev.stopPropagation()
         allBookmarks = allBookmarks.filter(bk => bk.id !== b.id)
-        save(allBookmarks)
+        if (api) await api.removeBookmark(b.id)
         render(allBookmarks)
       })
 
@@ -145,8 +137,14 @@
     container.appendChild(grid)
   }
 
-  let allBookmarks = load()
-  render(allBookmarks)
+  let allBookmarks = []
+
+  async function loadAndRender() {
+    if (api) allBookmarks = await api.getBookmarks()
+    render(allBookmarks)
+  }
+
+  loadAndRender()
 
   document.getElementById('bm-search').addEventListener('input', e => {
     const q = e.target.value.toLowerCase()

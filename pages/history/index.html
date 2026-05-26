@@ -84,20 +84,7 @@
 
 </div>
 <script>
-  // History is stored by the modules/history.js main-process module in userData.
-  // This page reads a snapshot injected by the tab-manager via a <script> tag,
-  // or falls back to a localStorage cache written by the preload. For now we
-  // show a helpful message and use any cached data available.
-
-  const CACHE_KEY = 'litzium:history-cache'
-
-  function loadHistory() {
-    // Future: receive data from main process via a preload IPC call.
-    // For now, check localStorage for a demo cache.
-    try {
-      return JSON.parse(localStorage.getItem(CACHE_KEY) || '[]')
-    } catch { return [] }
-  }
+  const api = window.litzPagesAPI
 
   function timeAgo(ts) {
     const diff = Date.now() - ts
@@ -134,6 +121,8 @@
     }
 
     let lastDay = null
+    let dayCard = null
+
     entries.forEach(e => {
       const day = dayKey(e.visitedAt)
       if (day !== lastDay) {
@@ -142,17 +131,15 @@
         label.textContent = day
         container.appendChild(label)
 
-        const card = document.createElement('div')
-        card.className = 'ip-card'
-        card.id = 'day-' + day.replace(/\s+/g, '-')
-        container.appendChild(card)
+        dayCard = document.createElement('div')
+        dayCard.className = 'ip-card'
+        container.appendChild(dayCard)
         lastDay = day
       }
 
-      const dayCard = container.lastElementChild
       const row = document.createElement('div')
       row.className = 'history-row'
-      row.dataset.id = e.id
+      row.dataset.id  = e.id
       row.dataset.url = e.url
       row.innerHTML = `
         <div class="history-favicon">
@@ -165,23 +152,31 @@
         <span class="history-time">${timeAgo(e.visitedAt)}</span>
         <button class="history-delete" title="Remove from history">✕</button>`
 
-      row.addEventListener('click', e => {
-        if (e.target.classList.contains('history-delete')) return
+      row.addEventListener('click', ev => {
+        if (ev.target.classList.contains('history-delete')) return
         window.location.href = row.dataset.url
       })
 
-      row.querySelector('.history-delete').addEventListener('click', () => {
+      row.querySelector('.history-delete').addEventListener('click', async () => {
         row.remove()
-        // TODO: send IPC to modules/history.js to remove(e.id)
+        allHistory = allHistory.filter(h => h.id !== e.id)
+        if (api) await api.removeHistory(e.id)
       })
 
       dayCard.appendChild(row)
     })
   }
 
-  // Search
-  let allHistory = loadHistory()
-  render(allHistory)
+  let allHistory = []
+
+  async function loadAndRender() {
+    if (api) {
+      allHistory = await api.getHistory()
+    }
+    render(allHistory)
+  }
+
+  loadAndRender()
 
   document.getElementById('h-search').addEventListener('input', e => {
     const q = e.target.value.toLowerCase()
@@ -190,10 +185,10 @@
     ) : allHistory)
   })
 
-  document.getElementById('h-clear').addEventListener('click', () => {
+  document.getElementById('h-clear').addEventListener('click', async () => {
     if (confirm('Clear all browsing history?')) {
       allHistory = []
-      localStorage.removeItem(CACHE_KEY)
+      if (api) api.clearHistory()
       render([])
     }
   })
