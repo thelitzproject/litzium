@@ -29,4 +29,15 @@
     "name": "Slate",
     "css": "linear-gradient(135deg, #0f1117 0%, #1a1d2e 50%, #0f1117 100%)"
   }
+  ,
+  {
+    "id": "dawn",
+    "name": "Dawn",
+    "css": "linear-gradient(180deg, #ffecd2 0%, #fcb69f 50%, #ff7e5f 100%)"
+  },
+  {
+    "id": "cosmos",
+    "name": "Cosmos",
+    "css": "radial-gradient(circle at 20% 30%, #0f2027 0%, #203a43 40%, #2c5364 100%)"
+  }
 ]
