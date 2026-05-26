@@ -1,0 +1,8 @@
+/**
+ * theming/dark.css
+ * Litzium Dark theme (default) — values already set in variables.css.
+ * This file exists as an explicit no-op so the theme switcher can reference it
+ * and future overrides can be dropped here cleanly.
+ */
+
+/* The dark palette is the default in variables.css — nothing to override. */

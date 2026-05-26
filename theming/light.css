@@ -1,0 +1,27 @@
+/**
+ * theming/light.css
+ * Litzium Light theme — overrides the CSS variables from variables.css.
+ * Apply by adding <link rel="stylesheet" href="light.css"> AFTER variables.css.
+ */
+
+:root {
+  --accent:          #5b63f5;
+  --accent-hover:    #7178f7;
+  --accent-active:   #4850f0;
+
+  --bg-window:       #f0f0f5;
+  --bg-tabbar:       #e8e8f0;
+  --bg-navbar:       #f5f5fa;
+  --bg-tab-active:   #ffffff;
+  --bg-tab-hover:    #dddde8;
+  --bg-omnibox:      #e8e8f0;
+  --bg-omnibox-focus:#ffffff;
+
+  --text-primary:    #1a1a2e;
+  --text-secondary:  #60607a;
+  --text-disabled:   #a0a0b8;
+
+  --border-subtle:   #d8d8e8;
+
+  --danger:          #e81123;
+}

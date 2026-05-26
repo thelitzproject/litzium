@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Litzium Version</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --surface: #252540;
+      --accent: #7c83f7;
+      --text: #e2e2f0;
+      --sub: #9090b0;
+      --border: #2d2d44;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      padding: 48px;
+      min-height: 100vh;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 4px;
+      letter-spacing: -0.5px;
+    }
+    .tagline { color: var(--sub); margin-bottom: 40px; font-size: 14px; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 560px;
+      margin-bottom: 16px;
+    }
+    .card h2 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--sub);
+      margin-bottom: 14px;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .row:last-child { border-bottom: none; }
+    .row .key   { color: var(--sub); }
+    .row .value { font-family: monospace; font-size: 12px; color: var(--text); }
+  </style>
+</head>
+<body>
+  <h1>Litzium</h1>
+  <p class="tagline">A modern, Chromium-powered browser built on Electron</p>
+
+  <div class="card">
+    <h2>Application</h2>
+    <div class="row"><span class="key">Browser</span>      <span class="value" id="v-browser">—</span></div>
+    <div class="row"><span class="key">Electron</span>     <span class="value" id="v-electron">—</span></div>
+    <div class="row"><span class="key">Chromium</span>     <span class="value" id="v-chromium">—</span></div>
+    <div class="row"><span class="key">Node.js</span>      <span class="value" id="v-node">—</span></div>
+    <div class="row"><span class="key">V8</span>           <span class="value" id="v-v8">—</span></div>
+  </div>
+
+  <div class="card">
+    <h2>Platform</h2>
+    <div class="row"><span class="key">OS</span>           <span class="value" id="v-os">—</span></div>
+    <div class="row"><span class="key">Architecture</span> <span class="value" id="v-arch">—</span></div>
+  </div>
+
+  <script>
+    // These are safe — no Node.js access needed, read from injected globals
+    document.getElementById('v-browser').textContent   = 'v1.15.100.0'
+    document.getElementById('v-electron').textContent  = navigator.userAgent.match(/Electron\/([\d.]+)/)?.[1] ?? '—'
+    document.getElementById('v-chromium').textContent  = navigator.userAgent.match(/Chrome\/([\d.]+)/)?.[1]   ?? '—'
+    document.getElementById('v-v8').textContent        = navigator.userAgent.match(/V8\/([\d.]+)/)?.[1] ?? '12.8.374.38'
+    document.getElementById('v-node').textContent      = navigator.userAgent.match(/Node\.js\/([\d.]+)/)?.[1] ?? '—'
+    document.getElementById('v-os').textContent        = navigator.platform
+    document.getElementById('v-arch').textContent      = '—'
+  </script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug</title>
+  <link rel="stylesheet" href="../../theming/internal.css">
+  <style>
+    .debug-refresh {
+      float: right;
+      margin-top: -2px;
+    }
+
+    .val.good  { color: var(--success); }
+    .val.warn  { color: var(--warn); }
+    .val.bad   { color: var(--danger); }
+
+    pre.ip-pre {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--sub);
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+<div class="ip-page">
+
+  <div class="ip-breadcrumb">
+    <a href="litzium://litz-urls">litzium URLs</a>
+    <span class="sep">›</span>
+    <span>Debug</span>
+  </div>
+
+  <div class="ip-header">
+    <h1>Debug
+      <button class="ip-btn debug-refresh" onclick="refresh()">↺ Refresh</button>
+    </h1>
+    <p class="ip-subtitle">Runtime diagnostics and environment information</p>
+  </div>
+
+  <!-- Browser -->
+  <div class="ip-section">
+    <div class="ip-section-title">Browser</div>
+    <div class="ip-card">
+      <table class="ip-table">
+        <tr><td class="key">Litzium</td>     <td class="val" id="d-litzium">v1.15.100.0</td></tr>
+        <tr><td class="key">Electron</td>    <td class="val" id="d-electron">—</td></tr>
+        <tr><td class="key">Chromium</td>    <td class="val" id="d-chromium">—</td></tr>
+        <tr><td class="key">User Agent</td>  <td class="val" id="d-ua">—</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Platform -->
+  <div class="ip-section">
+    <div class="ip-section-title">Platform</div>
+    <div class="ip-card">
+      <table class="ip-table">
+        <tr><td class="key">Platform</td>       <td class="val" id="d-platform">—</td></tr>
+        <tr><td class="key">Language</td>        <td class="val" id="d-lang">—</td></tr>
+        <tr><td class="key">CPU Concurrency</td> <td class="val" id="d-cpu">—</td></tr>
+        <tr><td class="key">Touch points</td>    <td class="val" id="d-touch">—</td></tr>
+        <tr><td class="key">Online</td>          <td class="val" id="d-online">—</td></tr>
+        <tr><td class="key">Cookie enabled</td>  <td class="val" id="d-cookie">—</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Window -->
+  <div class="ip-section">
+    <div class="ip-section-title">Window</div>
+    <div class="ip-card">
+      <table class="ip-table">
+        <tr><td class="key">Window size</td>     <td class="val" id="d-winsize">—</td></tr>
+        <tr><td class="key">Screen size</td>     <td class="val" id="d-screen">—</td></tr>
+        <tr><td class="key">Device pixel ratio</td><td class="val" id="d-dpr">—</td></tr>
+        <tr><td class="key">Color depth</td>     <td class="val" id="d-color">—</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Memory -->
+  <div class="ip-section">
+    <div class="ip-section-title">Memory</div>
+    <div class="ip-card">
+      <table class="ip-table">
+        <tr><td class="key">JS heap used</td>    <td class="val" id="d-heap-used">—</td></tr>
+        <tr><td class="key">JS heap total</td>   <td class="val" id="d-heap-total">—</td></tr>
+        <tr><td class="key">JS heap limit</td>   <td class="val" id="d-heap-limit">—</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Feature support -->
+  <div class="ip-section">
+    <div class="ip-section-title">Feature Support</div>
+    <div class="ip-card">
+      <table class="ip-table" id="d-features"></table>
+    </div>
+  </div>
+
+  <!-- Full UA -->
+  <div class="ip-section">
+    <div class="ip-section-title">Full User-Agent String</div>
+    <pre class="ip-pre" id="d-full-ua"></pre>
+  </div>
+
+</div>
+<script>
+  function mb(bytes) {
+    return bytes ? (bytes / 1024 / 1024).toFixed(1) + ' MB' : '—'
+  }
+
+  function set(id, val, cls) {
+    const el = document.getElementById(id)
+    if (!el) return
+    el.textContent = val
+    if (cls) el.className = 'val ' + cls
+  }
+
+  function refresh() {
+    set('d-electron', navigator.userAgent.match(/Electron\/([\d.]+)/)?.[1] ?? '—')
+    set('d-chromium', navigator.userAgent.match(/Chrome\/([\d.]+)/)?.[1]   ?? '—')
+    set('d-ua',       navigator.userAgent.slice(0, 60) + '…')
+    set('d-full-ua',  navigator.userAgent)
+    document.getElementById('d-full-ua').textContent = navigator.userAgent
+
+    set('d-platform', navigator.platform)
+    set('d-lang',     navigator.language)
+    set('d-cpu',      navigator.hardwareConcurrency + ' logical cores')
+    set('d-touch',    navigator.maxTouchPoints)
+    set('d-online',   navigator.onLine ? 'Yes' : 'No', navigator.onLine ? 'good' : 'bad')
+    set('d-cookie',   navigator.cookieEnabled ? 'Yes' : 'No')
+
+    set('d-winsize',  window.innerWidth + ' × ' + window.innerHeight + ' px')
+    set('d-screen',   screen.width + ' × ' + screen.height + ' px')
+    set('d-dpr',      window.devicePixelRatio + 'x')
+    set('d-color',    screen.colorDepth + '-bit')
+
+    // Memory (Chrome / Electron only)
+    const mem = performance.memory
+    if (mem) {
+      const usedPct = mem.usedJSHeapSize / mem.jsHeapSizeLimit
+      set('d-heap-used',  mb(mem.usedJSHeapSize),  usedPct > 0.8 ? 'bad' : usedPct > 0.5 ? 'warn' : 'good')
+      set('d-heap-total', mb(mem.totalJSHeapSize))
+      set('d-heap-limit', mb(mem.jsHeapSizeLimit))
+    } else {
+      ['d-heap-used','d-heap-total','d-heap-limit'].forEach(id => set(id, 'Not available'))
+    }
+
+    // Features
+    const features = [
+      ['WebGL',        !!document.createElement('canvas').getContext('webgl')],
+      ['WebGL 2',      !!document.createElement('canvas').getContext('webgl2')],
+      ['WebAssembly',  typeof WebAssembly !== 'undefined'],
+      ['Service Worker', 'serviceWorker' in navigator],
+      ['Web Workers',  typeof Worker !== 'undefined'],
+      ['IndexedDB',    'indexedDB' in window],
+      ['Web Crypto',   'crypto' in window && 'subtle' in window.crypto],
+      ['Notification', 'Notification' in window],
+      ['Geolocation',  'geolocation' in navigator],
+    ]
+
+    const table = document.getElementById('d-features')
+    table.innerHTML = features.map(([name, supported]) =>
+      `<tr>
+        <td class="key">${name}</td>
+        <td class="val ${supported ? 'good' : 'bad'}">${supported ? '✓ Supported' : '✗ Not available'}</td>
+      </tr>`
+    ).join('')
+  }
+
+  refresh()
+  // Auto-refresh memory every 3 seconds
+  setInterval(() => {
+    const mem = performance.memory
+    if (mem) {
+      const usedPct = mem.usedJSHeapSize / mem.jsHeapSizeLimit
+      set('d-heap-used', mb(mem.usedJSHeapSize), usedPct > 0.8 ? 'bad' : usedPct > 0.5 ? 'warn' : 'good')
+      set('d-heap-total', mb(mem.totalJSHeapSize))
+    }
+    set('d-online', navigator.onLine ? 'Yes' : 'No', navigator.onLine ? 'good' : 'bad')
+    set('d-winsize', window.innerWidth + ' × ' + window.innerHeight + ' px')
+  }, 3000)
+</script>
+</body>
+</html>

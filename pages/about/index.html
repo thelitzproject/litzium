@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About Litzium</title>
+  <link rel="stylesheet" href="../../theming/internal.css">
+  <style>
+    .about-hero {
+      text-align: center;
+      padding: 48px 0 40px;
+    }
+
+    .about-logo {
+      width: 80px;
+      height: 80px;
+      border-radius: 22px;
+      background: linear-gradient(135deg, #5b63f5, #9ba1f9);
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      box-shadow: 0 8px 32px rgba(124, 131, 247, 0.3);
+    }
+
+    .about-name {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .about-tagline {
+      font-size: 15px;
+      color: var(--sub);
+      margin-bottom: 20px;
+    }
+
+    .about-version {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--sub);
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    .about-links {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+<div class="ip-page">
+
+  <div class="ip-breadcrumb">
+    <a href="litzium://litz-urls">litzium URLs</a>
+    <span class="sep">›</span>
+    <span>About</span>
+  </div>
+
+  <div class="about-hero">
+    <div class="about-logo">🌐</div>
+    <div class="about-name">Litzium</div>
+    <div class="about-tagline">A modern, Chromium-powered browser built on Electron</div>
+    <div class="about-version" id="version-chip">v1.15.100.0</div>
+    <div class="about-links">
+      <a class="ip-btn" href="litzium://version">Version details</a>
+      <a class="ip-btn" href="litzium://litz-urls">All pages</a>
+    </div>
+  </div>
+
+  <!-- Build info -->
+  <div class="ip-section">
+    <div class="ip-section-title">Build</div>
+    <div class="ip-card">
+      <table class="ip-table">
+        <tr><td class="key">Version</td>     <td class="val" id="b-version">v1.15.100.0</td></tr>
+        <tr><td class="key">Electron</td>    <td class="val" id="b-electron">—</td></tr>
+        <tr><td class="key">Chromium</td>    <td class="val" id="b-chromium">—</td></tr>
+        <tr><td class="key">Platform</td>    <td class="val" id="b-platform">—</td></tr>
+        <tr><td class="key">Release date</td><td class="val">2026</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- License -->
+  <div class="ip-section">
+    <div class="ip-section-title">License</div>
+    <div class="ip-card">
+      <div class="ip-row">
+        <div class="ip-row-icon">⚖️</div>
+        <div class="ip-row-body">
+          <div class="ip-row-title">MIT License</div>
+          <div class="ip-row-desc">Copyright © 2026 The Litzium Foundation. Free and open source software.</div>
+        </div>
+      </div>
+      <div class="ip-row">
+        <div class="ip-row-icon">⚛️</div>
+        <div class="ip-row-body">
+          <div class="ip-row-title">Electron</div>
+          <div class="ip-row-desc">MIT License — Copyright © Electron contributors</div>
+        </div>
+      </div>
+      <div class="ip-row">
+        <div class="ip-row-icon">🌐</div>
+        <div class="ip-row-body">
+          <div class="ip-row-title">Chromium</div>
+          <div class="ip-row-desc">BSD License — Copyright © The Chromium Authors</div>
+        </div>
+      </div>
+      <div class="ip-row">
+        <div class="ip-row-icon">🟢</div>
+        <div class="ip-row-body">
+          <div class="ip-row-title">Node.js</div>
+          <div class="ip-row-desc">MIT License — Copyright © Node.js contributors</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+  document.getElementById('b-electron').textContent = navigator.userAgent.match(/Electron\/([\d.]+)/)?.[1] ?? '—'
+  document.getElementById('b-chromium').textContent = navigator.userAgent.match(/Chrome\/([\d.]+)/)?.[1]   ?? '—'
+  document.getElementById('b-platform').textContent = navigator.platform
+</script>
+</body>
+</html>

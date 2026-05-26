@@ -1,0 +1,313 @@
+/**
+ * theming/browser.css
+ * Styles for the browser chrome (pages/browser.html).
+ * Requires theming/variables.css to be loaded first.
+ */
+
+/* ─── Reset / base ───────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-window);
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font-family: inherit; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ─── Chrome wrapper ─────────────────────────────────────────────────────── */
+#browser-chrome {
+  display: flex;
+  flex-direction: column;
+  height: var(--chrome-h);
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 999;
+  user-select: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/*  TAB BAR                                                                    */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+#tab-bar {
+  height: var(--tabbar-h);
+  background: var(--bg-tabbar);
+  display: flex;
+  align-items: stretch;
+  padding: 0 2px;
+  /* Make the empty space draggable so the window can be moved */
+  -webkit-app-region: drag;
+}
+
+/* Scrollable tabs region */
+#tabs-scroller {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  -webkit-app-region: drag;
+}
+
+#tabs-container {
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+  padding: 6px 0 0 6px;
+  gap: 2px;
+  overflow: hidden;
+  flex: 1;
+}
+
+/* ─── Individual tab ─────────────────────────────────────────────────────── */
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--tab-h);
+  padding: 0 6px 0 10px;
+  min-width: var(--tab-min-w);
+  max-width: var(--tab-max-w);
+  flex: 1;
+  border-radius: var(--radius-tab) var(--radius-tab) 0 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  /* Individual tabs must not be draggable */
+  -webkit-app-region: no-drag;
+}
+
+.tab:hover {
+  background: var(--bg-tab-hover);
+  color: var(--text-primary);
+}
+
+.tab.active {
+  background: var(--bg-tab-active);
+  color: var(--text-primary);
+}
+
+/* Coloured top-edge accent on the active tab */
+.tab.active::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: var(--radius-tab) var(--radius-tab) 0 0;
+}
+
+/* Favicon / spinner slot */
+.tab-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+.tab-icon svg  { width: 14px; height: 14px; }
+.tab-icon img  { width: 16px; height: 16px; border-radius: 2px; }
+
+/* Loading spinner */
+@keyframes tab-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.tab-spinner { animation: tab-spin 0.75s linear infinite; }
+
+/* Title */
+.tab-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* Close button */
+.tab-close {
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.1s, background 0.1s, color 0.1s;
+}
+.tab-close svg { width: 12px; height: 12px; }
+
+.tab:hover .tab-close,
+.tab.active .tab-close   { opacity: 1; }
+.tab-close:hover         { background: rgba(255,255,255,0.1); color: #ff6b6b; }
+
+/* ─── New-tab button ─────────────────────────────────────────────────────── */
+#new-tab-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--radius-btn);
+  background: transparent;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  align-self: flex-end;
+  margin: 0 2px 4px;
+  transition: background 0.12s, color 0.12s;
+  -webkit-app-region: no-drag;
+}
+#new-tab-btn:hover      { background: var(--bg-tab-hover); color: var(--text-primary); }
+#new-tab-btn svg        { width: 14px; height: 14px; }
+
+/* ─── Windows window controls ────────────────────────────────────────────── */
+#window-controls {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+}
+
+.win-ctrl {
+  width: 46px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s, color 0.1s;
+}
+.win-ctrl:hover                { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+.win-ctrl.win-close-btn:hover  { background: var(--danger); color: #fff; }
+.win-ctrl svg                  { width: 10px; height: 10px; }
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/*  NAV BAR                                                                    */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+#nav-bar {
+  height: var(--navbar-h);
+  background: var(--bg-navbar);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 4px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.nav-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* Generic icon button */
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-btn);
+  background: transparent;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s;
+}
+.icon-btn:hover:not(:disabled) { background: rgba(255,255,255,0.07); color: var(--text-primary); }
+.icon-btn:disabled             { opacity: 0.3; cursor: default; }
+.icon-btn svg                  { width: 18px; height: 18px; }
+
+/* ─── Omnibox ─────────────────────────────────────────────────────────────── */
+#omnibox {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px;
+  margin: 0 6px;
+  background: var(--bg-omnibox);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-omnibox);
+  transition: background 0.15s, border-color 0.15s;
+}
+#omnibox:focus-within {
+  background: var(--bg-omnibox-focus);
+  border-color: var(--border-focus);
+}
+
+#page-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+#page-icon svg { width: 14px; height: 14px; }
+#page-icon img { border-radius: 2px; }
+
+#address-bar {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-ui);
+  caret-color: var(--accent);
+}
+#address-bar::placeholder { color: var(--text-disabled); }
+#address-bar::selection   { background: rgba(124, 131, 247, 0.35); }
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/*  PROGRESS BAR                                                               */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+#progress-bar {
+  height: 2px;
+  background: transparent;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+#progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+  border-radius: 1px;
+  transition: width 0.25s ease;
+}
+
+@keyframes progress-slide {
+  0%   { left: -45%; width: 45%; }
+  100% { left: 100%; width: 45%; }
+}
+
+#progress-fill.indeterminate {
+  width: 45% !important;
+  position: absolute;
+  transition: none;
+  animation: progress-slide 1.1s ease-in-out infinite;
+}

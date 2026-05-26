@@ -1,32 +1,33 @@
-# Prerequisites
-*.d
+node_modules/
+dist/
+out/
+.DS_Store
+*.log
+npm-debug.log*
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+# Electron
+app/node_modules/
 
-# Precompiled Headers
-*.gch
-*.pch
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artifacts
 *.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
 *.exe
-*.out
 *.app
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+
+# Environment
+.env
+.env.local

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — Litzium</title>
+  <link rel="stylesheet" href="../../theming/internal.css">
+  <style>
+    .settings-nav {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 28px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0;
+    }
+
+    .settings-tab {
+      padding: 8px 16px 10px;
+      font-size: 13px;
+      color: var(--sub);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.1s;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      font-family: var(--font);
+    }
+
+    .settings-tab:hover { color: var(--text); }
+    .settings-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .settings-panel { display: none; }
+    .settings-panel.active { display: block; }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+    }
+
+    .setting-row:last-child { border-bottom: none; }
+
+    .setting-label { font-size: 13px; color: var(--text); }
+    .setting-desc  { font-size: 12px; color: var(--sub); margin-top: 2px; }
+
+    .setting-control { flex-shrink: 0; }
+
+    select.ip-select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      padding: 5px 28px 5px 10px;
+      border-radius: var(--radius-sm);
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%239090b0'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      background-size: 14px;
+      outline: none;
+      cursor: pointer;
+      min-width: 140px;
+    }
+
+    select.ip-select:focus { border-color: var(--accent); }
+  </style>
+</head>
+<body>
+<div class="ip-page">
+
+  <div class="ip-breadcrumb">
+    <a href="litzium://litz-urls">litzium URLs</a>
+    <span class="sep">›</span>
+    <span>Settings</span>
+  </div>
+
+  <div class="ip-header">
+    <h1>Settings</h1>
+    <p class="ip-subtitle">Customize your Litzium experience</p>
+  </div>
+
+  <div class="settings-nav">
+    <button class="settings-tab active" data-panel="general">General</button>
+    <button class="settings-tab" data-panel="appearance">Appearance</button>
+    <button class="settings-tab" data-panel="privacy">Privacy</button>
+    <button class="settings-tab" data-panel="search">Search</button>
+    <button class="settings-tab" data-panel="startup">On Startup</button>
+  </div>
+
+  <!-- ░░ General ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <div class="settings-panel active" id="panel-general">
+    <div class="ip-section">
+      <div class="ip-section-title">Tabs</div>
+      <div class="ip-card">
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Show tab favicons</div>
+            <div class="setting-desc">Display website icons in the tab bar</div>
+          </div>
+          <div class="setting-control">
+            <label class="ip-toggle"><input type="checkbox" checked><span class="ip-toggle-track"></span></label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Open new tabs in background</div>
+            <div class="setting-desc">Middle-click or Ctrl+click links open in a background tab</div>
+          </div>
+          <div class="setting-control">
+            <label class="ip-toggle"><input type="checkbox"><span class="ip-toggle-track"></span></label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Confirm before closing multiple tabs</div>
+            <div class="setting-desc">Show a prompt when closing a window with multiple tabs open</div>
+          </div>
+          <div class="setting-control">
+            <label class="ip-toggle"><input type="checkbox" checked><span class="ip-toggle-track"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ip-section">
+      <div class="ip-section-title">Downloads</div>
+      <div class="ip-card">
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Download location</div>
+            <div class="setting-desc">Where files are saved by default</div>
+          </div>
+          <div class="setting-control">
+            <button class="ip-btn">Change…</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Ask where to save each file</div>
+            <div class="setting-desc">Show a save dialog for every download</div>
+          </div>
+          <div class="setting-control">
+            <label class="ip-toggle"><input type="checkbox"><span class="ip-toggle-track"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ░░ Appearance ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <div class="settings-panel" id="panel-appearance">
+    <div class="ip-section">
+      <div class="ip-section-title">Theme</div>
+      <div class="ip-card">
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Browser theme</div>
+            <div class="setting-desc">Choose the colour scheme for the browser chrome</div>
+          </div>
+          <div class="setting-control">
+            <select class="ip-select">
+              <option value="dark" selected>Dark (default)</option>
+              <option value="light">Light</option>
+              <option value="system">Follow system</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ip-section">
+      <div class="ip-section-title">New Tab Background</div>
+      <div class="ip-card">
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Background style</div>
+            <div class="setting-desc">Gradient shown on the new tab page</div>
+          </div>
+          <div class="setting-control">
+            <select class="ip-select">
+              <option value="aurora" selected>Aurora</option>
+              <option value="midnight">Midnight</option>
+              <option value="ocean">Ocean</option>
+              <option value="forest">Forest</option>
+              <option value="sunset">Sunset</option>
+              <option value="slate">Slate</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ░░ Privacy ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <div class="settings-panel" id="panel-privacy">
+    <div class="ip-section">
+      <div class="ip-section-title">Browsing Data</div>
+      <div class="ip-card">
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Save browsing history</div>
+            <div class="setting-desc">Record visited pages in <a href="litzium://history">litzium://history</a></div>
+          </div>
+          <div class="setting-control">
+            <label class="ip-toggle"><input type="checkbox" checked><span class="ip-toggle-track"></span></label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Clear browsing data</div>
+            <div class="setting-desc">Erase history, cookies, and cached files</div>
+          </div>
+          <div class="setting-control">
+            <button class="ip-btn">Clear now…</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ip-section">
+      <div class="ip-section-title">Security</div>
+      <div class="ip-card">
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Block insecure content on HTTPS pages</div>
+          </div>
+          <div class="setting-control">
+            <label class="ip-toggle"><input type="checkbox" checked><span class="ip-toggle-track"></span></label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Send Do Not Track header</div>
+          </div>
+          <div class="setting-control">
+            <label class="ip-toggle"><input type="checkbox"><span class="ip-toggle-track"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ░░ Search ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <div class="settings-panel" id="panel-search">
+    <div class="ip-section">
+      <div class="ip-section-title">Default Search Engine</div>
+      <div class="ip-card">
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Search engine</div>
+            <div class="setting-desc">Used when you type a query into the address bar</div>
+          </div>
+          <div class="setting-control">
+            <select class="ip-select">
+              <option value="google" selected>Google</option>
+              <option value="bing">Bing</option>
+              <option value="duckduckgo">DuckDuckGo</option>
+              <option value="brave">Brave Search</option>
+              <option value="ecosia">Ecosia</option>
+            </select>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Show search suggestions</div>
+            <div class="setting-desc">Autocomplete queries as you type in the address bar</div>
+          </div>
+          <div class="setting-control">
+            <label class="ip-toggle"><input type="checkbox" checked><span class="ip-toggle-track"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ░░ Startup ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <div class="settings-panel" id="panel-startup">
+    <div class="ip-section">
+      <div class="ip-section-title">On Startup</div>
+      <div class="ip-card">
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Open New Tab page</div>
+          </div>
+          <div class="setting-control">
+            <label class="ip-toggle"><input type="radio" name="startup" checked><span class="ip-toggle-track"></span></label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Continue where you left off</div>
+            <div class="setting-desc">Restore the tabs from the previous session</div>
+          </div>
+          <div class="setting-control">
+            <label class="ip-toggle"><input type="radio" name="startup"><span class="ip-toggle-track"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+  // Tab switching
+  document.querySelectorAll('.settings-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'))
+      document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'))
+      btn.classList.add('active')
+      document.getElementById('panel-' + btn.dataset.panel).classList.add('active')
+    })
+  })
+</script>
+</body>
+</html>

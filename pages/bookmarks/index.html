@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bookmarks — Litzium</title>
+  <link rel="stylesheet" href="../../theming/internal.css">
+  <style>
+    .bm-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 10px;
+    }
+
+    .bm-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.12s, background 0.12s;
+      position: relative;
+    }
+
+    .bm-card:hover { border-color: var(--accent); background: var(--accent-glow); text-decoration: none; }
+
+    .bm-icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-size: 14px;
+    }
+
+    .bm-icon img { width: 16px; height: 16px; border-radius: 3px; }
+
+    .bm-body { flex: 1; min-width: 0; }
+    .bm-title { font-size: 13px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bm-url   { font-size: 11px; color: var(--sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+    .bm-date  { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+    .bm-delete {
+      position: absolute; top: 8px; right: 8px;
+      width: 20px; height: 20px;
+      border: none; background: transparent;
+      color: var(--muted); border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; opacity: 0;
+      transition: opacity 0.1s, color 0.1s;
+      font-size: 12px;
+    }
+
+    .bm-card:hover .bm-delete { opacity: 1; }
+    .bm-delete:hover { color: var(--danger); }
+
+    .toolbar { display: flex; gap: 8px; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+<div class="ip-page">
+
+  <div class="ip-breadcrumb">
+    <a href="litzium://litz-urls">litzium URLs</a>
+    <span class="sep">›</span>
+    <span>Bookmarks</span>
+  </div>
+
+  <div class="ip-header">
+    <h1>Bookmarks</h1>
+    <p class="ip-subtitle">Your saved pages</p>
+  </div>
+
+  <div class="toolbar">
+    <input class="ip-search" id="bm-search" placeholder="Search bookmarks…" style="margin-bottom:0;flex:1" autocomplete="off">
+  </div>
+
+  <div id="bm-content"></div>
+
+</div>
+<script>
+  const CACHE_KEY = 'litzium:bookmarks-cache'
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '[]') } catch { return [] }
+  }
+
+  function save(list) {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(list))
+  }
+
+  function relDate(ts) {
+    const d = new Date(ts)
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  function render(bookmarks) {
+    const container = document.getElementById('bm-content')
+    container.innerHTML = ''
+
+    if (bookmarks.length === 0) {
+      container.innerHTML = `
+        <div class="ip-empty">
+          <div class="ip-empty-icon">🔖</div>
+          <p>No bookmarks yet.<br>Bookmark pages using the address bar star icon.</p>
+        </div>`
+      return
+    }
+
+    const grid = document.createElement('div')
+    grid.className = 'bm-grid'
+
+    bookmarks.forEach(b => {
+      const a = document.createElement('a')
+      a.className = 'bm-card'
+      a.href = b.url
+      a.innerHTML = `
+        <div class="bm-icon">
+          ${b.favicon ? `<img src="${b.favicon}" referrerpolicy="no-referrer">` : '🔖'}
+        </div>
+        <div class="bm-body">
+          <div class="bm-title">${escHtml(b.title || b.url)}</div>
+          <div class="bm-url">${escHtml(b.url)}</div>
+          ${b.addedAt ? `<div class="bm-date">Added ${relDate(b.addedAt)}</div>` : ''}
+        </div>
+        <button class="bm-delete" title="Remove bookmark">✕</button>`
+
+      a.querySelector('.bm-delete').addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        allBookmarks = allBookmarks.filter(bk => bk.id !== b.id)
+        save(allBookmarks)
+        render(allBookmarks)
+      })
+
+      grid.appendChild(a)
+    })
+
+    container.appendChild(grid)
+  }
+
+  let allBookmarks = load()
+  render(allBookmarks)
+
+  document.getElementById('bm-search').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase()
+    render(q ? allBookmarks.filter(b =>
+      (b.title || '').toLowerCase().includes(q) || b.url.toLowerCase().includes(q)
+    ) : allBookmarks)
+  })
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  }
+</script>
+</body>
+</html>

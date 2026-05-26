@@ -1,0 +1,55 @@
+{
+  "name": "litzium",
+  "version": "v1.15.100.0",
+  "description": "A modern Chromium-based browser built on Electron",
+  "main": "javas/main/index.js",
+  "scripts": {
+    "start":       "electron .",
+    "dev":         "electron . --enable-logging",
+    "build":       "electron-builder",
+    "build:win":   "electron-builder --win",
+    "build:mac":   "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "keywords": ["browser", "electron", "chromium"],
+  "author": "Owen Gaydosz",
+  "license": "MIT",
+  "devDependencies": {
+    "electron":         "^35.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId":         "com.litzium.browser",
+    "productName":   "Litzium",
+    "copyright":     "Copyright © 2026 Owen Gaydosz",
+    "directories": {
+      "output":          "dist",
+      "buildResources":  "assets"
+    },
+    "files": [
+      "javas/**/*",
+      "pages/**/*",
+      "theming/**/*",
+      "backgrounds/**/*",
+      "modules/**/*",
+      "dbus/**/*",
+      "slick/**/*",
+      "!**/*.map",
+      "!**/node_modules/.cache"
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png",
+      "category": "Network"
+    }
+  }
+}

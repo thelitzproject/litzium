@@ -1,0 +1,40 @@
+# build_win/electron-builder.yml
+# Windows-specific electron-builder overrides.
+# Referenced by package.json build config.
+
+appId: com.litzium.browser
+productName: Litzium
+
+directories:
+  output: dist
+  buildResources: assets
+
+files:
+  - javas/**/*
+  - pages/**/*
+  - theming/**/*
+  - backgrounds/**/*
+  - modules/**/*
+  - dbus/**/*
+  - slick/**/*
+  - "!**/*.map"
+  - "!**/node_modules/.cache"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: assets/icon.ico
+  requestedExecutionLevel: asInvoker
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  installerIcon: assets/icon.ico
+  uninstallerIcon: assets/icon.ico
+  installerHeaderIcon: assets/icon.ico
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Litzium
+  license: LICENSE

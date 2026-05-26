@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>History — Litzium</title>
+  <link rel="stylesheet" href="../../theming/internal.css">
+  <style>
+    .history-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .history-row:last-child { border-bottom: none; }
+    .history-row:hover { background: var(--accent-glow); }
+
+    .history-favicon {
+      width: 16px; height: 16px;
+      border-radius: 3px;
+      flex-shrink: 0;
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+    }
+    .history-favicon img { width: 16px; height: 16px; border-radius: 3px; }
+
+    .history-body { flex: 1; min-width: 0; }
+    .history-title { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-url   { font-size: 11px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+    .history-time  { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+
+    .history-delete {
+      width: 24px; height: 24px;
+      border: none; background: transparent;
+      color: var(--muted);
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.1s, color 0.1s, background 0.1s;
+      font-size: 14px;
+    }
+    .history-row:hover .history-delete { opacity: 1; }
+    .history-delete:hover { color: var(--danger); background: rgba(248,113,113,0.1); }
+
+    .day-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      padding: 16px 16px 6px;
+    }
+
+    .toolbar { display: flex; gap: 8px; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+<div class="ip-page">
+
+  <div class="ip-breadcrumb">
+    <a href="litzium://litz-urls">litzium URLs</a>
+    <span class="sep">›</span>
+    <span>History</span>
+  </div>
+
+  <div class="ip-header">
+    <h1>History</h1>
+    <p class="ip-subtitle">Pages you've visited in Litzium</p>
+  </div>
+
+  <div class="toolbar">
+    <input class="ip-search" id="h-search" placeholder="Search history…" style="margin-bottom:0;flex:1" autocomplete="off">
+    <button class="ip-btn" id="h-clear" style="flex-shrink:0">🗑 Clear all</button>
+  </div>
+
+  <div id="h-content"></div>
+
+</div>
+<script>
+  // History is stored by the modules/history.js main-process module in userData.
+  // This page reads a snapshot injected by the tab-manager via a <script> tag,
+  // or falls back to a localStorage cache written by the preload. For now we
+  // show a helpful message and use any cached data available.
+
+  const CACHE_KEY = 'litzium:history-cache'
+
+  function loadHistory() {
+    // Future: receive data from main process via a preload IPC call.
+    // For now, check localStorage for a demo cache.
+    try {
+      return JSON.parse(localStorage.getItem(CACHE_KEY) || '[]')
+    } catch { return [] }
+  }
+
+  function timeAgo(ts) {
+    const diff = Date.now() - ts
+    const m = Math.floor(diff / 60000)
+    if (m < 1)   return 'Just now'
+    if (m < 60)  return m + 'm ago'
+    const h = Math.floor(m / 60)
+    if (h < 24)  return h + 'h ago'
+    const d = Math.floor(h / 24)
+    if (d === 1) return 'Yesterday'
+    return d + ' days ago'
+  }
+
+  function dayKey(ts) {
+    const d = new Date(ts)
+    const today = new Date()
+    if (d.toDateString() === today.toDateString()) return 'Today'
+    const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1)
+    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
+    return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+  }
+
+  function render(entries) {
+    const container = document.getElementById('h-content')
+    container.innerHTML = ''
+
+    if (entries.length === 0) {
+      container.innerHTML = `
+        <div class="ip-empty">
+          <div class="ip-empty-icon">🕐</div>
+          <p>No history yet.<br>Pages you visit will appear here.</p>
+        </div>`
+      return
+    }
+
+    let lastDay = null
+    entries.forEach(e => {
+      const day = dayKey(e.visitedAt)
+      if (day !== lastDay) {
+        const label = document.createElement('div')
+        label.className = 'day-label'
+        label.textContent = day
+        container.appendChild(label)
+
+        const card = document.createElement('div')
+        card.className = 'ip-card'
+        card.id = 'day-' + day.replace(/\s+/g, '-')
+        container.appendChild(card)
+        lastDay = day
+      }
+
+      const dayCard = container.lastElementChild
+      const row = document.createElement('div')
+      row.className = 'history-row'
+      row.dataset.id = e.id
+      row.dataset.url = e.url
+      row.innerHTML = `
+        <div class="history-favicon">
+          ${e.favicon ? `<img src="${e.favicon}" referrerpolicy="no-referrer">` : '🌐'}
+        </div>
+        <div class="history-body">
+          <div class="history-title">${escHtml(e.title || e.url)}</div>
+          <div class="history-url">${escHtml(e.url)}</div>
+        </div>
+        <span class="history-time">${timeAgo(e.visitedAt)}</span>
+        <button class="history-delete" title="Remove from history">✕</button>`
+
+      row.addEventListener('click', e => {
+        if (e.target.classList.contains('history-delete')) return
+        window.location.href = row.dataset.url
+      })
+
+      row.querySelector('.history-delete').addEventListener('click', () => {
+        row.remove()
+        // TODO: send IPC to modules/history.js to remove(e.id)
+      })
+
+      dayCard.appendChild(row)
+    })
+  }
+
+  // Search
+  let allHistory = loadHistory()
+  render(allHistory)
+
+  document.getElementById('h-search').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase()
+    render(q ? allHistory.filter(h =>
+      (h.title || '').toLowerCase().includes(q) || h.url.toLowerCase().includes(q)
+    ) : allHistory)
+  })
+
+  document.getElementById('h-clear').addEventListener('click', () => {
+    if (confirm('Clear all browsing history?')) {
+      allHistory = []
+      localStorage.removeItem(CACHE_KEY)
+      render([])
+    }
+  })
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  }
+</script>
+</body>
+</html>

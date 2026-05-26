@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>litzium URLs</title>
+  <link rel="stylesheet" href="../../theming/internal.css">
+  <style>
+    .url-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 10px;
+    }
+
+    .url-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      cursor: pointer;
+      transition: border-color 0.12s, background 0.12s, transform 0.1s;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .url-card:hover {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+      transform: translateY(-1px);
+      text-decoration: none;
+    }
+
+    .url-card-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .url-card-body { flex: 1; min-width: 0; }
+
+    .url-card-url {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent);
+      margin-bottom: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .url-card-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+
+    .url-card-desc {
+      font-size: 12px;
+      color: var(--sub);
+      line-height: 1.4;
+    }
+
+    .url-card-badge {
+      align-self: flex-start;
+      margin-top: 2px;
+    }
+
+    .notice {
+      background: rgba(124, 131, 247, 0.08);
+      border: 1px solid rgba(124, 131, 247, 0.2);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--sub);
+      margin-bottom: 28px;
+    }
+
+    .notice code {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      background: var(--accent-dim);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+<div class="ip-page">
+
+  <div class="ip-header">
+    <h1>litzium URLs</h1>
+    <p class="ip-subtitle">All built-in browser pages. Type any URL below into the address bar to navigate to it.</p>
+  </div>
+
+  <div class="notice">
+    These pages are only accessible within Litzium. Type a URL like
+    <code>litzium://version</code> directly into the address bar.
+  </div>
+
+  <!-- ░░ Browser Info ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <div class="ip-section">
+    <div class="ip-section-title">Browser Info</div>
+    <div class="url-grid" id="grid-info"></div>
+  </div>
+
+  <!-- ░░ Your Data ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <div class="ip-section">
+    <div class="ip-section-title">Your Data</div>
+    <div class="url-grid" id="grid-data"></div>
+  </div>
+
+  <!-- ░░ Configuration ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <div class="ip-section">
+    <div class="ip-section-title">Configuration</div>
+    <div class="url-grid" id="grid-config"></div>
+  </div>
+
+  <!-- ░░ Developer ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <div class="ip-section">
+    <div class="ip-section-title">Developer</div>
+    <div class="url-grid" id="grid-dev"></div>
+  </div>
+
+</div>
+
+<script>
+  const PAGES = {
+    info: [
+      {
+        url:   'litzium://version',
+        icon:  '📦',
+        title: 'Version',
+        desc:  'Browser version, Electron, Chromium, and Node.js build information.',
+        badge: 'stable',
+      },
+      {
+        url:   'litzium://about',
+        icon:  '🌐',
+        title: 'About',
+        desc:  'About Litzium — credits, license, and project information.',
+        badge: 'stable',
+      },
+    ],
+    data: [
+      {
+        url:   'litzium://history',
+        icon:  '🕐',
+        title: 'History',
+        desc:  'Your browsing history. Search and revisit past pages.',
+        badge: 'stable',
+      },
+      {
+        url:   'litzium://bookmarks',
+        icon:  '🔖',
+        title: 'Bookmarks',
+        desc:  'Manage your saved bookmarks.',
+        badge: 'stable',
+      },
+      {
+        url:   'litzium://downloads',
+        icon:  '⬇️',
+        title: 'Downloads',
+        desc:  'Files you have downloaded in this session.',
+        badge: 'stable',
+      },
+    ],
+    config: [
+      {
+        url:   'litzium://settings',
+        icon:  '⚙️',
+        title: 'Settings',
+        desc:  'Browser preferences: theme, search engine, startup behaviour, and more.',
+        badge: 'stable',
+      },
+      {
+        url:   'litzium://flags',
+        icon:  '🚩',
+        title: 'Flags',
+        desc:  'Experimental and in-development features. Enable at your own risk.',
+        badge: 'experimental',
+      },
+    ],
+    dev: [
+      {
+        url:   'litzium://debug',
+        icon:  '🔧',
+        title: 'Debug',
+        desc:  'Runtime diagnostics — user agent, memory, platform, renderer info.',
+        badge: 'stable',
+      },
+      {
+        url:   'litzium://litz-urls',
+        icon:  '🗂️',
+        title: 'litz-urls',
+        desc:  'This page. A directory of all built-in litzium:// pages.',
+        badge: 'stable',
+      },
+    ],
+  }
+
+  const BADGE_LABELS = {
+    stable: 'Stable',
+    experimental: 'Experimental',
+    'coming-soon': 'Soon',
+  }
+
+  function renderGrid(containerId, pages) {
+    const container = document.getElementById(containerId)
+    pages.forEach(p => {
+      const a = document.createElement('a')
+      a.className = 'url-card'
+      a.href = p.url
+      a.innerHTML = `
+        <div class="url-card-icon">${p.icon}</div>
+        <div class="url-card-body">
+          <div class="url-card-url">${p.url}</div>
+          <div class="url-card-title">${p.title}</div>
+          <div class="url-card-desc">${p.desc}</div>
+        </div>
+        ${p.badge ? `<span class="ip-badge ${p.badge} url-card-badge">${BADGE_LABELS[p.badge]}</span>` : ''}
+      `
+      container.appendChild(a)
+    })
+  }
+
+  renderGrid('grid-info',   PAGES.info)
+  renderGrid('grid-data',   PAGES.data)
+  renderGrid('grid-config', PAGES.config)
+  renderGrid('grid-dev',    PAGES.dev)
+</script>
+</body>
+</html>

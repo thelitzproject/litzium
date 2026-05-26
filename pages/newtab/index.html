@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Tab</title>
+  <link rel="stylesheet" href="../../theming/newtab.css">
+</head>
+<body>
+  <div class="nt-bg"></div>
+
+  <main class="nt-main">
+    <div class="nt-clock" id="nt-clock">00:00</div>
+    <div class="nt-date"  id="nt-date">Monday, January 1</div>
+
+    <form class="nt-search" id="nt-form" autocomplete="off">
+      <div class="nt-search-wrap">
+        <svg class="nt-search-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
+        </svg>
+        <input
+          id="nt-input"
+          type="text"
+          placeholder="Search Google or enter an address"
+          autocomplete="off"
+          spellcheck="false"
+          autofocus
+        >
+      </div>
+    </form>
+
+    <div class="nt-shortcuts" id="nt-shortcuts">
+      <!-- Populated by script.js -->
+    </div>
+  </main>
+
+  <footer class="nt-footer">
+    <span>Litzium</span>
+  </footer>
+
+  <script src="./script.js"></script>
+</body>
+</html>

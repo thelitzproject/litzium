@@ -1,0 +1,36 @@
+/**
+ * Litzium design tokens — loaded first so all other stylesheets can inherit.
+ * Override any variable here to implement a theme, or swap to light.css / dark.css.
+ */
+
+:root {
+  --accent:          #7c83f7;
+  --accent-hover:    #9ba1f9;
+  --accent-active:   #6069f5;
+  --bg-window:       #13131f;   /* outermost window background                */
+  --bg-tabbar:       #1a1a2e;   /* tab strip                                  */
+  --bg-navbar:       #1e1e32;   /* navigation bar                             */
+  --bg-tab-active:   #252540;   /* active tab fill                            */
+  --bg-tab-hover:    #202038;   /* hovered inactive tab                       */
+  --bg-omnibox:      #2d2d44;   /* address bar at rest                        */
+  --bg-omnibox-focus:#38384f;   /* address bar focused                        */
+  --text-primary:    #e2e2f0;
+  --text-secondary:  #9090b0;
+  --text-disabled:   #555570;
+  --border-subtle:   #2a2a42;
+  --border-focus:    var(--accent);
+  --danger:          #e81123;   /* window close button hover                  */
+  --tabbar-h:        40px;
+  --navbar-h:        48px;
+  --chrome-h:        88px;      /* tabbar-h + navbar-h                        */
+  --tab-max-w:       220px;
+  --tab-min-w:        60px;
+  --tab-h:            34px;
+  --radius-tab:       8px;
+  --radius-btn:       6px;
+  --radius-omnibox:   8px;
+
+  /* ── Typography ─────────────────────────────────────────────────────────── */
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+}

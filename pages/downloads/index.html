@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Downloads — Litzium</title>
+  <link rel="stylesheet" href="../../theming/internal.css">
+  <style>
+    .dl-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    .dl-row:last-child { border-bottom: none; }
+    .dl-row:hover { background: var(--accent-glow); }
+
+    .dl-icon {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .dl-body  { flex: 1; min-width: 0; }
+    .dl-name  { font-size: 13px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dl-meta  { font-size: 12px; color: var(--sub); margin-top: 2px; }
+
+    .dl-progress {
+      width: 100%;
+      height: 3px;
+      background: var(--surface3);
+      border-radius: 2px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .dl-progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width 0.3s;
+    }
+
+    .dl-status {
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .dl-status.completed   { color: var(--success); }
+    .dl-status.progressing { color: var(--accent); }
+    .dl-status.cancelled   { color: var(--muted); }
+    .dl-status.interrupted { color: var(--danger); }
+
+    .dl-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+<div class="ip-page">
+
+  <div class="ip-breadcrumb">
+    <a href="litzium://litz-urls">litzium URLs</a>
+    <span class="sep">›</span>
+    <span>Downloads</span>
+  </div>
+
+  <div class="ip-header">
+    <h1>Downloads</h1>
+    <p class="ip-subtitle">Files downloaded in this session</p>
+  </div>
+
+  <div id="dl-content"></div>
+
+</div>
+<script>
+  // Downloads are tracked in the main process via modules/downloads.js.
+  // This page listens for IPC events pushed via the preload; for now it renders
+  // whatever is in sessionStorage (populated by the preload when available).
+
+  const CACHE_KEY = 'litzium:downloads-session'
+
+  function extIcon(filename) {
+    const ext = (filename || '').split('.').pop().toLowerCase()
+    const map = {
+      pdf: '📄', zip: '📦', tar: '📦', gz: '📦', rar: '📦', '7z': '📦',
+      mp4: '🎬', mkv: '🎬', avi: '🎬', mov: '🎬',
+      mp3: '🎵', wav: '🎵', flac: '🎵', ogg: '🎵',
+      jpg: '🖼️', jpeg: '🖼️', png: '🖼️', gif: '🖼️', webp: '🖼️', svg: '🖼️',
+      exe: '⚙️', msi: '⚙️', dmg: '⚙️', deb: '⚙️', appimage: '⚙️',
+      js: '📜', ts: '📜', py: '📜', html: '📜', css: '📜',
+      doc: '📝', docx: '📝', xls: '📊', xlsx: '📊', ppt: '📊', pptx: '📊',
+    }
+    return map[ext] || '📎'
+  }
+
+  function fmtSize(bytes) {
+    if (!bytes) return ''
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / 1024 / 1024).toFixed(1) + ' MB'
+  }
+
+  function render(downloads) {
+    const container = document.getElementById('dl-content')
+    container.innerHTML = ''
+
+    if (downloads.length === 0) {
+      container.innerHTML = `
+        <div class="ip-empty">
+          <div class="ip-empty-icon">⬇️</div>
+          <p>No downloads in this session.<br>Files you download will appear here.</p>
+        </div>`
+      return
+    }
+
+    const card = document.createElement('div')
+    card.className = 'ip-card'
+
+    downloads.forEach(d => {
+      const row = document.createElement('div')
+      row.className = 'dl-row'
+      row.id = 'dl-' + d.id
+
+      const pct = d.total ? Math.round((d.received / d.total) * 100) : 0
+      const meta = [
+        d.total ? fmtSize(d.total) : '',
+        d.state === 'progressing' ? pct + '%' : '',
+        d.state === 'completed' ? 'Done' : '',
+      ].filter(Boolean).join(' · ')
+
+      row.innerHTML = `
+        <div class="dl-icon">${extIcon(d.filename)}</div>
+        <div class="dl-body">
+          <div class="dl-name">${escHtml(d.filename)}</div>
+          <div class="dl-meta">${escHtml(meta || d.url)}</div>
+          ${d.state === 'progressing' ? `
+            <div class="dl-progress">
+              <div class="dl-progress-fill" style="width:${pct}%"></div>
+            </div>` : ''}
+        </div>
+        <span class="dl-status ${d.state}">${d.state}</span>
+        <div class="dl-actions">
+          ${d.state === 'completed'
+            ? `<button class="ip-btn" title="Open file">Open</button>
+               <button class="ip-btn" title="Show in folder">Folder</button>`
+            : ''}
+        </div>`
+
+      card.appendChild(row)
+    })
+
+    container.appendChild(card)
+  }
+
+  function load() {
+    try { return JSON.parse(sessionStorage.getItem(CACHE_KEY) || '[]') } catch { return [] }
+  }
+
+  render(load())
+
+  // Listen for live download events pushed by the preload (when wired up)
+  // window.litzium?.on('download-started', ...) etc.
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  }
+</script>
+</body>
+</html>
