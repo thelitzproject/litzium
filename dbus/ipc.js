@@ -64,6 +64,11 @@ const IPC = {
   // ── Zoom ──────────────────────────────────────────────────────────────────
   ZOOM_CHANGED: 'zoom-changed',  // main→renderer: { tabId, zoomFactor }
   ZOOM_RESET:   'zoom-reset',    // send
+
+  // ── Print ─────────────────────────────────────────────────────────────────
+  PRINT:         'print',          // send — open OS print dialog
+  PRINT_TO_PDF:  'print-to-pdf',   // send — save PDF with dialog
+  PRINT_RESULT:  'print-result',   // main→renderer: { success, filePath? }
 }
 
 module.exports = IPC
