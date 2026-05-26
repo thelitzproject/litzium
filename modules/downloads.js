@@ -1,9 +1,7 @@
 
-
 const { shell } = require('electron')
-const path = require('path')
 
-/** @type {Map<string, DownloadItem>} */
+/** @type {Map<string, DownloadRecord>} */
 const downloads = new Map()
 let nextId = 1
 
@@ -11,12 +9,13 @@ let nextId = 1
 
 /**
  * Attach download tracking to an Electron session.
- * Call once during app startup: downloads.setup(session.defaultSession, mainWindow)
+ * Call once during app startup: downloads.setup(session.defaultSession, mainWindow, IPC)
  *
- * @param {Electron.Session} sess
+ * @param {Electron.Session}      sess
  * @param {Electron.BrowserWindow} win  — used to push progress to the UI
+ * @param {object}                IPC  — dbus/ipc constants
  */
-function setup(sess, win) {
+function setup(sess, win, IPC) {
   sess.on('will-download', (event, item) => {
     const id = `dl-${nextId++}`
 
@@ -32,23 +31,27 @@ function setup(sess, win) {
     }
 
     downloads.set(id, record)
-    win.webContents.send('download-started', record)
+    win.webContents.send(IPC.DOWNLOAD_STARTED, record)
 
     item.on('updated', (_, state) => {
       record.state    = state
       record.received = item.getReceivedBytes()
       record.total    = item.getTotalBytes()
-      win.webContents.send('download-updated', { id, state, received: record.received, total: record.total })
+      win.webContents.send(IPC.DOWNLOAD_UPDATED, {
+        id,
+        state,
+        received: record.received,
+        total:    record.total,
+      })
     })
 
     item.once('done', (_, state) => {
       record.state    = state
       record.savePath = item.getSavePath()
-      win.webContents.send('download-done', { id, state, savePath: record.savePath })
+      win.webContents.send(IPC.DOWNLOAD_DONE, { id, state, savePath: record.savePath })
     })
   })
 }
-
 
 function getAll()     { return Array.from(downloads.values()) }
 function getById(id)  { return downloads.get(id) }
