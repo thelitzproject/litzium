@@ -4,7 +4,7 @@
 
 **A modern, Chromium-based browser built on Electron**
 
-[![Release](https://img.shields.io/github/v/release/owengaydosz/litzium?style=flat-square&color=7c83f7)](https://github.com/owengaydosz/litzium/releases/latest)
+[![Release](https://img.shields.io/github/v/release/owengaydosz/litzium?style=flat-square&color=7c83f7)](https://github.com/thelitzproject/litzium/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-7c83f7?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows-7c83f7?style=flat-square)](#installation)
 [![Electron](https://img.shields.io/badge/Electron-35.x-47848f?style=flat-square)](https://electronjs.org)
@@ -22,7 +22,7 @@ Litzium is a desktop web browser built on top of **Electron** and **Chromium**. 
 
 ### Download the latest release
 
-Head to [**Releases**](https://github.com/owengaydosz/litzium/releases/latest) and download the `Litzium-Setup-*.exe` installer for Windows.
+Head to [**Releases**](https://github.com/thelitzproject/litzium/releases/latest) and download the `Litzium-Setup-*.exe` installer for Windows.
 
 > macOS and Linux builds are not yet published but can be compiled locally (see below).
 
