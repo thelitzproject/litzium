@@ -183,6 +183,10 @@ window.litzium.on(ch.NAV_STATE, state => {
 
 window.litzium.on(ch.FOCUS_OMNIBOX, () => focusOmnibox())
 
+// Print requests forwarded from web content keyboard shortcuts
+window.litzium.on(ch.PRINT,        () => window.litzium.printPage())
+window.litzium.on(ch.PRINT_TO_PDF, () => window.litzium.printToPDF())
+
 window.litzium.on(ch.BOOKMARK_STATE, ({ isBookmarked }) => setStarState(isBookmarked))
 
 // ─── Bookmark star ────────────────────────────────────────────────────────────
@@ -551,6 +555,8 @@ document.addEventListener('keydown', e => {
   else if (ctrl && e.key === 'r')                   { e.preventDefault(); window.litzium.reload() }
   else if (ctrl && e.key === 'l')                   { e.preventDefault(); focusOmnibox() }
   else if (ctrl && e.key === 'f')                   { e.preventDefault(); openFindBar() }
+  else if (ctrl && !e.shiftKey && e.key === 'p')   { e.preventDefault(); window.litzium.printPage() }
+  else if (ctrl &&  e.shiftKey && e.key === 'P')   { e.preventDefault(); window.litzium.printToPDF() }
   else if (e.altKey && e.key === 'ArrowLeft')       window.litzium.goBack()
   else if (e.altKey && e.key === 'ArrowRight')      window.litzium.goForward()
   else if (e.key === 'F5')                          { e.preventDefault(); window.litzium.reload() }
