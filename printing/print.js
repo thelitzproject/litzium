@@ -141,4 +141,34 @@ async function quickPDF(wc, opts = {}) {
   }
 }
 
-module.exports = { printPage, savePDF, quickPDF }
+// ─── Generate preview PDF (returns base64 string) ─────────────────────────────
+
+/**
+ * Render the WebContents as a PDF and return the result as a base64 string.
+ * Used by the litzium://print-preview page to render the live preview.
+ *
+ * @param {Electron.WebContents} wc
+ * @param {object}               [opts]
+ * @param {boolean}              [opts.printBackground=true]
+ * @param {boolean}              [opts.landscape=false]
+ * @param {string}               [opts.pageSize='A4']
+ * @param {string}               [opts.marginType='default']
+ * @returns {Promise<{ success: boolean, data?: string, error?: string }>}
+ */
+async function generatePreviewPDF(wc, opts = {}) {
+  try {
+    const buf = await wc.printToPDF({
+      printBackground:   opts.printBackground ?? true,
+      landscape:         opts.landscape       ?? false,
+      pageSize:          opts.pageSize        ?? 'A4',
+      generateTaggedPDF: false,
+      margins: { marginType: opts.marginType ?? 'default' },
+    })
+    return { success: true, data: buf.toString('base64') }
+  } catch (err) {
+    console.warn('[print] generatePreviewPDF failed:', err.message)
+    return { success: false, error: err.message }
+  }
+}
+
+module.exports = { printPage, savePDF, quickPDF, generatePreviewPDF }

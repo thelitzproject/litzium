@@ -119,6 +119,14 @@
       desc: 'Navigate to view-source: URLs to see page HTML with syntax highlighting.', default: false },
     { category: 'Developer', icon: '📡', name: 'Network Log', key: 'network-log',
       desc: 'Record all network requests to litzium://debug.', default: false },
+    { category: 'Developer', icon: '🔬', name: 'Predictions Dev Page', key: 'predictions-dev',
+      desc: 'Show the litzium://predictions developer page in the URL bar autocomplete and litzium URLs listing.', default: false },
+
+    // ── Printing ───────────────────────────────────────────────────────────────
+    { category: 'Printing', icon: '🖨️', name: 'Print Preview', key: 'print-preview',
+      desc: 'Open an interactive print preview when Ctrl+P is pressed instead of the native OS print dialog.', default: true },
+    { category: 'Printing', icon: '📄', name: 'Auto-open PDF after Save', key: 'pdf-open-after-save',
+      desc: 'Automatically open the saved PDF in the default viewer after exporting a page with Ctrl+Shift+P.', default: false },
   ]
 
   // Load saved states from localStorage
