@@ -69,6 +69,12 @@ const IPC = {
   PRINT:         'print',          // send — open OS print dialog
   PRINT_TO_PDF:  'print-to-pdf',   // send — save PDF with dialog
   PRINT_RESULT:  'print-result',   // main→renderer: { success, filePath? }
+
+  // ── Print preview (litzium://print-preview) ────────────────────────────
+  PRINT_PREVIEW_OPEN:     'print-preview-open',     // send — open preview tab for active tab
+  PRINT_PREVIEW_GENERATE: 'print-preview-generate', // invoke { opts } → { success, data: base64 }
+  PRINT_PREVIEW_PRINT:    'print-preview-print',    // invoke { opts } → { success }
+  PRINT_PREVIEW_SAVE:     'print-preview-save',     // invoke { opts } → { saved, filePath? }
 }
 
 module.exports = IPC
