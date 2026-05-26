@@ -243,7 +243,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   align-items: center;
   gap: 6px;
   height: 34px;
-  padding: 0 10px;
+  padding: 0 6px 0 10px;
   margin: 0 6px;
   background: var(--bg-omnibox);
   border: 1.5px solid transparent;
@@ -254,6 +254,42 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   background: var(--bg-omnibox-focus);
   border-color: var(--border-focus);
 }
+
+/* ─── Zoom pill ───────────────────────────────────────────────────────────── */
+.zoom-pill {
+  display: flex;
+  align-items: center;
+  padding: 0 7px;
+  height: 22px;
+  border-radius: 11px;
+  border: 1px solid rgba(124,131,247,0.35);
+  background: rgba(124,131,247,0.12);
+  color: var(--accent);
+  font-size: 11px;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+  white-space: nowrap;
+}
+.zoom-pill:hover { background: rgba(124,131,247,0.22); border-color: rgba(124,131,247,0.6); }
+.zoom-pill[hidden] { display: none !important; }
+
+/* ─── Bookmark star ───────────────────────────────────────────────────────── */
+.star-btn {
+  width: 26px !important;
+  height: 26px !important;
+  flex-shrink: 0;
+  transition: color 0.15s, transform 0.15s;
+}
+.star-btn svg { width: 16px; height: 16px; }
+.star-btn[aria-pressed="false"] { color: var(--text-disabled); }
+.star-btn[aria-pressed="false"]:hover { color: var(--accent); }
+.star-btn[aria-pressed="true"]  { color: var(--accent); }
+.star-btn[aria-pressed="true"]:hover  { color: var(--accent-hover); transform: scale(1.15); }
+/* Hide star on internal pages */
+.star-btn.internal { display: none !important; }
 
 #page-icon {
   width: 16px;
@@ -279,6 +315,33 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 }
 #address-bar::placeholder { color: var(--text-disabled); }
 #address-bar::selection   { background: rgba(124, 131, 247, 0.35); }
+
+/* ─── Download badge ─────────────────────────────────────────────────────── */
+.dl-btn { position: relative; }
+.dl-btn[hidden] { display: none !important; }
+
+.dl-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--font-ui);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  line-height: 1;
+}
+
+.dl-badge:empty { display: none; }
+.dl-badge.done  { background: var(--success, #4ade80); }
 
 /* ══════════════════════════════════════════════════════════════════════════ */
 /*  PROGRESS BAR                                                               */
@@ -311,6 +374,78 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   transition: none;
   animation: progress-slide 1.1s ease-in-out infinite;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/*  FIND BAR                                                                    */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+#find-bar {
+  height: 44px;
+  background: var(--bg-navbar);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  flex-shrink: 0;
+  animation: find-bar-slide 0.12s ease;
+}
+
+#find-bar[hidden] { display: none !important; }
+
+@keyframes find-bar-slide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.find-bar-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+#find-input {
+  flex: 1;
+  background: var(--bg-omnibox);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-omnibox);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  padding: 0 10px;
+  height: 28px;
+  outline: none;
+  caret-color: var(--accent);
+  transition: border-color 0.15s;
+  max-width: 320px;
+}
+#find-input:focus        { border-color: var(--border-focus); }
+#find-input.no-match     { border-color: rgba(248,113,113,0.6) !important; color: #f87171; }
+#find-input::placeholder { color: var(--text-disabled); }
+
+.find-count {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  min-width: 56px;
+}
+.find-count.no-match { color: #f87171; }
+
+.find-nav { display: flex; gap: 2px; }
+
+.find-nav-btn {
+  width: 26px !important;
+  height: 26px !important;
+}
+.find-nav-btn svg { width: 14px; height: 14px; }
+
+.find-close-btn {
+  width: 26px !important;
+  height: 26px !important;
+  margin-left: 4px;
+}
+.find-close-btn svg { width: 14px; height: 14px; }
 
 /* ══════════════════════════════════════════════════════════════════════════ */
 /*  SUGGESTIONS DROPDOWN                                                       */
