@@ -15,6 +15,7 @@ const reloadBtn          = $('reload-btn')
 const icoReload          = $('ico-reload')
 const icoStop            = $('ico-stop')
 const devtoolsBtn        = $('devtools-btn')
+const settingsBtn        = $('settings-btn')
 const omnibox            = $('omnibox')
 const addressBar         = $('address-bar')
 const icoGlobe           = $('ico-globe')
@@ -526,6 +527,7 @@ reloadBtn.addEventListener('click', () => {
 
 newTabBtn.addEventListener('click',   () => window.litzium.newTab())
 devtoolsBtn.addEventListener('click', () => window.litzium.openDevTools())
+settingsBtn.addEventListener('click',  () => window.litzium.navigate('litzium://settings'))
 
 // ─── Progress bar ─────────────────────────────────────────────────────────────
 
