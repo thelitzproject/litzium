@@ -8,7 +8,11 @@ const { app } = require('electron')
 const path    = require('path')
 const fs      = require('fs')
 
-const FILE = path.join(app.getPath('userData'), 'settings.json')
+let _file = null
+function getFile() {
+  if (!_file) _file = path.join(app.getPath('userData'), 'settings.json')
+  return _file
+}
 
 const DEFAULTS = {
   searchEngine:            'google',   // google | bing | duckduckgo | brave | ecosia
@@ -25,12 +29,12 @@ const DEFAULTS = {
 let _cache = null
 
 function _load() {
-  try   { return { ...DEFAULTS, ...JSON.parse(fs.readFileSync(FILE, 'utf8')) } }
+  try   { return { ...DEFAULTS, ...JSON.parse(fs.readFileSync(getFile(), 'utf8')) } }
   catch { return { ...DEFAULTS } }
 }
 
 function _flush() {
-  try { fs.writeFileSync(FILE, JSON.stringify(_cache, null, 2), 'utf8') }
+  try { fs.writeFileSync(getFile(), JSON.stringify(_cache, null, 2), 'utf8') }
   catch (e) { console.warn('[settings] write failed:', e.message) }
 }
 
