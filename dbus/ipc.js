@@ -75,6 +75,25 @@ const IPC = {
   PRINT_PREVIEW_GENERATE: 'print-preview-generate', // invoke { opts } → { success, data: base64 }
   PRINT_PREVIEW_PRINT:    'print-preview-print',    // invoke { opts } → { success }
   PRINT_PREVIEW_SAVE:     'print-preview-save',     // invoke { opts } → { saved, filePath? }
+
+  // ── Theme ─────────────────────────────────────────────────────────────────
+  THEME_APPLY: 'theme-apply',  // main→chrome: string 'dark'|'light'|'system'
+
+  // ── Reopen last closed tab ────────────────────────────────────────────────
+  TAB_REOPEN_LAST: 'tab-reopen-last',  // send
+
+  // ── Pinned tabs ───────────────────────────────────────────────────────────
+  TAB_PIN:   'tab-pin',    // send { tabId }
+  TAB_UNPIN: 'tab-unpin',  // send { tabId }
+
+  // ── Session restore ───────────────────────────────────────────────────────
+  SESSION_AVAILABLE: 'session-available',  // main→chrome: { count }
+  SESSION_RESTORE:   'session-restore',    // send
+  SESSION_DISMISS:   'session-dismiss',    // send
+
+  // ── Download shelf ────────────────────────────────────────────────────────
+  SHELF_OPEN:  'shelf-open',   // send { height } — chrome tells main shelf appeared
+  SHELF_CLOSE: 'shelf-close',  // send             — chrome tells main shelf gone
 }
 
 module.exports = IPC
