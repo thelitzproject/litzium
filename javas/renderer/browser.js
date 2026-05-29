@@ -42,9 +42,17 @@ const findClose          = $('find-close')
 const dlBtn              = $('dl-btn')
 const dlBadge            = $('dl-badge')
 const browserChrome      = $('browser-chrome')
+const sessionBanner      = $('session-banner')
+const sessionRestoreBtn  = $('session-restore-btn')
+const sessionDismissBtn  = $('session-dismiss-btn')
+const downloadShelf      = $('download-shelf')
+const shelfItems         = $('shelf-items')
+const shelfClose         = $('shelf-close')
+const tabCtxMenu         = $('tab-ctx-menu')
 
 const BASE_CHROME_H = 88   // must match CHROME_HEIGHT in index.js
 const FIND_BAR_H    = 44
+const SHELF_H       = 52
 
 // ─── Window controls ──────────────────────────────────────────────────────────
 
@@ -94,7 +102,8 @@ function createTabEl(data) {
     </button>`
 
   el.addEventListener('click', () => { if (activeTabId !== data.id) window.litzium.switchTab(data.id) })
-  el.addEventListener('auxclick', e => { if (e.button === 1) window.litzium.closeTab(data.id) })
+  el.addEventListener('auxclick', e => { if (e.button === 1 && !data.pinned) window.litzium.closeTab(data.id) })
+  el.addEventListener('contextmenu', e => showTabCtxMenu(e, data.id, !!data.pinned))
   el.querySelector('.tab-close').addEventListener('click', e => {
     e.stopPropagation()
     window.litzium.closeTab(data.id)
@@ -117,6 +126,9 @@ function updateTabEl(id, patch) {
   }
   if (patch.favicon !== undefined || patch.isLoading !== undefined) {
     el.querySelector('.tab-icon').innerHTML = makeFaviconEl(data.favicon, data.isLoading)
+  }
+  if (patch.pinned !== undefined) {
+    el.classList.toggle('pinned', data.pinned)
   }
 }
 
@@ -189,6 +201,162 @@ window.litzium.on(ch.PRINT,        () => window.litzium.openPrintPreview())
 window.litzium.on(ch.PRINT_TO_PDF, () => window.litzium.printToPDF())
 
 window.litzium.on(ch.BOOKMARK_STATE, ({ isBookmarked }) => setStarState(isBookmarked))
+
+// ─── Theme ────────────────────────────────────────────────────────────────────
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme ?? 'dark')
+}
+
+window.litzium.on(ch.THEME_APPLY, applyTheme)
+
+// ─── Session restore banner ───────────────────────────────────────────────────
+
+window.litzium.on(ch.SESSION_AVAILABLE, ({ count }) => {
+  sessionBanner.querySelector('.session-banner-text').textContent =
+    `You had ${count} tab${count === 1 ? '' : 's'} open from your last session.`
+  sessionBanner.hidden = false
+  browserChrome.style.height = ''  // let it grow naturally
+})
+
+sessionRestoreBtn.addEventListener('click', () => {
+  window.litzium.restoreSession()
+  sessionBanner.hidden = true
+})
+
+sessionDismissBtn.addEventListener('click', () => {
+  window.litzium.dismissSession()
+  sessionBanner.hidden = true
+})
+
+// ─── Tab context menu ─────────────────────────────────────────────────────────
+
+function hideTabCtxMenu() {
+  tabCtxMenu.style.display = 'none'
+  tabCtxMenu.innerHTML = ''
+}
+
+document.addEventListener('click', hideTabCtxMenu)
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hideTabCtxMenu() })
+
+function showTabCtxMenu(e, tabId, isPinned) {
+  e.preventDefault()
+  e.stopPropagation()
+  hideTabCtxMenu()
+
+  const items = [
+    { label: isPinned ? 'Unpin Tab' : 'Pin Tab', action: () => isPinned ? window.litzium.unpinTab(tabId) : window.litzium.pinTab(tabId) },
+    { sep: true },
+    { label: 'New Tab',        action: () => window.litzium.newTab() },
+    { label: 'Reload Tab',     action: () => window.litzium.reload() },
+    { sep: true },
+    { label: 'Close Tab',      action: () => window.litzium.closeTab(tabId), danger: true },
+  ]
+
+  items.forEach(item => {
+    if (item.sep) {
+      const div = document.createElement('div')
+      div.className = 'ctx-separator'
+      tabCtxMenu.appendChild(div)
+    } else {
+      const div = document.createElement('div')
+      div.className = 'ctx-item' + (item.danger ? ' danger' : '')
+      div.textContent = item.label
+      div.addEventListener('click', () => { item.action(); hideTabCtxMenu() })
+      tabCtxMenu.appendChild(div)
+    }
+  })
+
+  tabCtxMenu.style.display = 'block'
+  const x = Math.min(e.clientX, window.innerWidth  - 170)
+  const y = Math.min(e.clientY, window.innerHeight - tabCtxMenu.offsetHeight - 8)
+  tabCtxMenu.style.left = x + 'px'
+  tabCtxMenu.style.top  = y + 'px'
+}
+
+// ─── Download shelf ───────────────────────────────────────────────────────────
+
+const shelfMap = new Map()  // id → { record, el }
+let   shelfDoneTimer = null
+
+function renderShelfItem(record) {
+  const { id, filename, received, total, state } = record
+  const pct   = total > 0 ? Math.round((received / total) * 100) : 0
+  const isDone = state === 'completed'
+
+  let entry = shelfMap.get(id)
+  if (!entry) {
+    const el = document.createElement('div')
+    el.className = 'shelf-item'
+    el.id = 'shelf-' + id
+    shelfItems.appendChild(el)
+    entry = { record, el }
+    shelfMap.set(id, entry)
+  }
+
+  entry.record = record
+  entry.el.innerHTML = `
+    <span class="shelf-item-name" title="${escHtml(filename)}">${escHtml(filename)}</span>
+    ${isDone
+      ? `<div class="shelf-item-progress"><div class="shelf-item-bar done" style="width:100%"></div></div>
+         <button class="shelf-item-action" data-id="${id}" data-action="open">Open</button>`
+      : `<div class="shelf-item-progress"><div class="shelf-item-bar" style="width:${pct}%"></div></div>
+         <span style="font-size:11px;color:var(--text-secondary)">${pct}%</span>`
+    }`
+
+  entry.el.querySelector('[data-action="open"]')?.addEventListener('click', () => {
+    window.litzium.navigate('litzium://downloads')
+  })
+}
+
+function openShelf() {
+  if (downloadShelf.hidden) {
+    downloadShelf.hidden = false
+    window.litzium.openShelf(SHELF_H)
+  }
+}
+
+function scheduleShelfClose() {
+  clearTimeout(shelfDoneTimer)
+  shelfDoneTimer = setTimeout(() => {
+    downloadShelf.hidden = true
+    shelfItems.innerHTML = ''
+    shelfMap.clear()
+    window.litzium.closeShelf()
+  }, 5000)
+}
+
+window.litzium.on(ch.DOWNLOAD_STARTED, record => {
+  openShelf()
+  clearTimeout(shelfDoneTimer)
+  renderShelfItem(record)
+})
+
+window.litzium.on(ch.DOWNLOAD_UPDATED, ({ id, state, received, total }) => {
+  const entry = shelfMap.get(id)
+  if (!entry) return
+  entry.record = { ...entry.record, state, received, total }
+  renderShelfItem(entry.record)
+})
+
+window.litzium.on(ch.DOWNLOAD_DONE, ({ id, state, savePath }) => {
+  const entry = shelfMap.get(id)
+  if (entry) {
+    entry.record = { ...entry.record, state, savePath }
+    renderShelfItem(entry.record)
+  }
+  // Close shelf 5s after all downloads are done
+  const allDone = [...shelfMap.values()].every(e => e.record.state !== 'progressing')
+  if (allDone) scheduleShelfClose()
+})
+
+shelfClose.addEventListener('click', () => {
+  clearTimeout(shelfDoneTimer)
+  downloadShelf.hidden = true
+  shelfItems.innerHTML = ''
+  shelfMap.clear()
+  window.litzium.closeShelf()
+})
 
 // ─── Bookmark star ────────────────────────────────────────────────────────────
 
@@ -559,6 +727,7 @@ document.addEventListener('keydown', e => {
   else if (ctrl && e.key === 'f')                   { e.preventDefault(); openFindBar() }
   else if (ctrl && !e.shiftKey && e.key === 'p')   { e.preventDefault(); window.litzium.openPrintPreview() }
   else if (ctrl &&  e.shiftKey && e.key === 'P')   { e.preventDefault(); window.litzium.printToPDF() }
+  else if (ctrl &&  e.shiftKey && e.key === 'T')   { e.preventDefault(); window.litzium.reopenLastTab() }
   else if (e.altKey && e.key === 'ArrowLeft')       window.litzium.goBack()
   else if (e.altKey && e.key === 'ArrowRight')      window.litzium.goForward()
   else if (e.key === 'F5')                          { e.preventDefault(); window.litzium.reload() }

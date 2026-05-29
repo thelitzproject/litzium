@@ -9,6 +9,12 @@
 const { contextBridge, ipcRenderer } = require('electron')
 const IPC = require('../../dbus/ipc')
 
+// Apply browser theme to this internal page as early as possible
+ipcRenderer.invoke(IPC.SETTINGS_GET_ALL).then(s => {
+  const theme = s?.browserTheme ?? 'dark'
+  document.documentElement.setAttribute('data-theme', theme)
+}).catch(() => {})
+
 // Channels internal pages are allowed to receive from main
 const PAGE_INBOUND = [
   IPC.DOWNLOAD_STARTED,

@@ -22,6 +22,8 @@ const INBOUND = [
   IPC.PRINT,
   IPC.PRINT_TO_PDF,
   IPC.PRINT_RESULT,
+  IPC.THEME_APPLY,
+  IPC.SESSION_AVAILABLE,
 ]
 
 contextBridge.exposeInMainWorld('litzium', {
@@ -31,9 +33,14 @@ contextBridge.exposeInMainWorld('litzium', {
   closeWindow:    () => ipcRenderer.send(IPC.WIN_CLOSE),
 
   // ── Tabs ─────────────────────────────────────────────────────────────
-  newTab:    (url)   => ipcRenderer.send(IPC.TAB_NEW,    url),
-  closeTab:  (tabId) => ipcRenderer.send(IPC.TAB_CLOSE,  tabId),
-  switchTab: (tabId) => ipcRenderer.send(IPC.TAB_SWITCH, tabId),
+  newTab:         (url)   => ipcRenderer.send(IPC.TAB_NEW,         url),
+  closeTab:       (tabId) => ipcRenderer.send(IPC.TAB_CLOSE,       tabId),
+  switchTab:      (tabId) => ipcRenderer.send(IPC.TAB_SWITCH,      tabId),
+  pinTab:         (tabId) => ipcRenderer.send(IPC.TAB_PIN,         { tabId }),
+  unpinTab:       (tabId) => ipcRenderer.send(IPC.TAB_UNPIN,       { tabId }),
+  reopenLastTab:  ()      => ipcRenderer.send(IPC.TAB_REOPEN_LAST),
+  restoreSession: ()      => ipcRenderer.send(IPC.SESSION_RESTORE),
+  dismissSession: ()      => ipcRenderer.send(IPC.SESSION_DISMISS),
 
   // ── Navigation ───────────────────────────────────────────────────────
   navigate:    (url) => ipcRenderer.send(IPC.NAV_GO,      url),
@@ -71,6 +78,10 @@ contextBridge.exposeInMainWorld('litzium', {
   printPage:        () => ipcRenderer.send(IPC.PRINT),
   printToPDF:       () => ipcRenderer.send(IPC.PRINT_TO_PDF),
   openPrintPreview: () => ipcRenderer.send(IPC.PRINT_PREVIEW_OPEN),
+
+  // ── Download shelf ────────────────────────────────────────────────────
+  openShelf:  (height) => ipcRenderer.send(IPC.SHELF_OPEN,  { height }),
+  closeShelf: ()       => ipcRenderer.send(IPC.SHELF_CLOSE),
 
   // ── IPC event subscription ───────────────────────────────────────────
   /**

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session } = require('electron')
+const { app, BrowserWindow, ipcMain, session, nativeTheme } = require('electron')
 const path = require('path')
 const IPC = require('../../dbus/ipc')
 const tabs = require('./tab-manager')
@@ -35,15 +35,39 @@ function createWindow() {
   win.once('ready-to-show', () => {
     win.show()
     tabs.init(win, CHROME_HEIGHT)
-    tabs.createTab('litzium://newtab')
+
+    // Check for a previous session before creating the default tab
+    const pending = tabs.loadSession()
+    if (pending && pending.tabs.length > 0) {
+      tabs.createTab('litzium://newtab')  // create one blank tab first
+      win.webContents.send(IPC.SESSION_AVAILABLE, { count: pending.tabs.length })
+    } else {
+      tabs.createTab('litzium://newtab')
+    }
+
+    // Send initial theme to chrome renderer
+    win.webContents.send(IPC.THEME_APPLY, resolveTheme(settings.get('browserTheme')))
 
     // Wire download tracking to the default session
     downloads.setup(session.defaultSession, win, IPC)
   })
 
+  // Re-send theme when OS preference changes (for 'system' mode)
+  nativeTheme.on('updated', () => {
+    if (settings.get('browserTheme') === 'system') {
+      win?.webContents.send(IPC.THEME_APPLY, 'system')
+    }
+  })
+
   win.on('resize',     () => tabs.updateAllBounds())
   win.on('maximize',   () => { win.webContents.send(IPC.WIN_MAXIMIZED, true);  tabs.updateAllBounds() })
   win.on('unmaximize', () => { win.webContents.send(IPC.WIN_MAXIMIZED, false); tabs.updateAllBounds() })
+}
+
+/** Return the effective theme string to send to the renderer. */
+function resolveTheme(setting) {
+  // We send 'system' and let CSS media queries handle OS detection
+  return (setting === 'dark' || setting === 'light' || setting === 'system') ? setting : 'dark'
 }
 
 function setupIPC() {
@@ -106,8 +130,8 @@ function setupIPC() {
   ipcMain.handle(IPC.SETTINGS_GET_ALL, () => settings.getAll())
   ipcMain.on(IPC.SETTINGS_SET, (_, { key, value }) => {
     settings.set(key, value)
-    // Live-apply search engine change
     if (key === 'searchEngine') tabs.setSearchEngine(value)
+    if (key === 'browserTheme') win?.webContents.send(IPC.THEME_APPLY, resolveTheme(value))
   })
 
   // ── Find in page ───────────────────────────────────────────────────────
@@ -134,6 +158,21 @@ function setupIPC() {
     win?.webContents.send(IPC.PRINT_RESULT, result)
   })
 
+  // ── Pinned tabs ────────────────────────────────────────────────────────────
+  ipcMain.on(IPC.TAB_PIN,   (_, { tabId }) => tabs.pinTab(tabId))
+  ipcMain.on(IPC.TAB_UNPIN, (_, { tabId }) => tabs.unpinTab(tabId))
+
+  // ── Reopen last closed tab ─────────────────────────────────────────────────
+  ipcMain.on(IPC.TAB_REOPEN_LAST, () => tabs.reopenLastClosed())
+
+  // ── Session restore ────────────────────────────────────────────────────────
+  ipcMain.on(IPC.SESSION_RESTORE, () => tabs.restoreSession())
+  ipcMain.on(IPC.SESSION_DISMISS, () => tabs.clearSession())
+
+  // ── Download shelf ─────────────────────────────────────────────────────────
+  ipcMain.on(IPC.SHELF_OPEN,  (_, { height } = {}) => tabs.setShelfOpen(true,  height ?? 52))
+  ipcMain.on(IPC.SHELF_CLOSE, ()                    => tabs.setShelfOpen(false, 0))
+
   // ── Print Preview ──────────────────────────────────────────────────────────
   ipcMain.on(IPC.PRINT_PREVIEW_OPEN, () => tabs.openPrintPreview())
   ipcMain.handle(IPC.PRINT_PREVIEW_GENERATE, async (_, opts = {}) => {
@@ -159,6 +198,10 @@ function setupIPC() {
 app.whenReady().then(() => {
   createWindow()
   setupIPC()
+})
+
+app.on('before-quit', () => {
+  tabs.saveSession()
 })
 
 app.on('window-all-closed', () => {

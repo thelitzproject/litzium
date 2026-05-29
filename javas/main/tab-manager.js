@@ -3,8 +3,9 @@
  * Manages all browser tabs via Electron's WebContentsView API.
  */
 
-const { WebContentsView } = require('electron')
+const { WebContentsView, Menu, clipboard, app } = require('electron')
 const path = require('path')
+const fs   = require('fs')
 const IPC      = require('../../dbus/ipc')
 const history  = require('../../modules/history')
 const search   = require('../../modules/search')
@@ -14,9 +15,21 @@ let win            = null
 let chromeHeight   = 88   // base chrome height set during init
 let suggestionExtra = 0   // extra px from open suggestions dropdown
 let findBarExtra    = 0   // extra px from open find bar
+let shelfExtra      = 0   // extra px from open download shelf
 
 /** Tab ID of the page that Ctrl+P was pressed on (source for print preview). */
 let printPreviewTargetId = null
+
+/** Stack of recently closed tabs (url + title) for Ctrl+Shift+T. */
+const closedTabs = []
+const MAX_CLOSED = 50
+
+/** Lazily resolved path to the session file. */
+let _sessionFile = null
+function getSessionFile() {
+  if (!_sessionFile) _sessionFile = path.join(app.getPath('userData'), 'session.json')
+  return _sessionFile
+}
 
 const FIND_BAR_H = 44
 
@@ -36,6 +49,7 @@ class Tab {
     this.canGoBack    = false
     this.canGoForward = false
     this.zoomFactor   = 1
+    this.pinned       = false
   }
 }
 
@@ -51,7 +65,7 @@ function init(window, height) {
 function contentBounds() {
   const b = win.getContentBounds()
   const y = chromeHeight + suggestionExtra + findBarExtra
-  return { x: 0, y, width: b.width, height: Math.max(0, b.height - y) }
+  return { x: 0, y, width: b.width, height: Math.max(0, b.height - y - shelfExtra) }
 }
 
 function applyBounds(view) {
@@ -81,6 +95,16 @@ function setOmniboxOpen(isOpen, extraHeight = 0) {
  */
 function setFindBarOpen(isOpen) {
   findBarExtra = isOpen ? FIND_BAR_H : 0
+  updateAllBounds()
+}
+
+/**
+ * Shrink/restore the WebContentsView height for the download shelf.
+ * @param {boolean} isOpen
+ * @param {number}  height
+ */
+function setShelfOpen(isOpen, height = 52) {
+  shelfExtra = isOpen ? height : 0
   updateAllBounds()
 }
 
@@ -224,6 +248,67 @@ function attachEvents(id, view) {
     if (id === activeId) toChrome(IPC.ZOOM_CHANGED, { tabId: id, zoomFactor: next })
   })
 
+  // Context menu
+  wc.on('context-menu', (_, params) => {
+    const t = tabs.get(id)
+    const { selectionText, linkURL, srcURL, mediaType, isEditable } = params
+    const items = []
+
+    if (linkURL) {
+      items.push(
+        { label: 'Open Link in New Tab', click: () => createTab(linkURL) },
+        { label: 'Copy Link Address',    click: () => clipboard.writeText(linkURL) },
+        { type: 'separator' },
+      )
+    }
+
+    if (mediaType === 'image' && srcURL) {
+      items.push(
+        { label: 'Open Image in New Tab', click: () => createTab(srcURL) },
+        { label: 'Copy Image URL',        click: () => clipboard.writeText(srcURL) },
+        { type: 'separator' },
+      )
+    }
+
+    if (selectionText.trim()) {
+      const engine  = search.getDefault()
+      const q       = selectionText.trim()
+      const preview = q.length > 30 ? q.slice(0, 30) + '…' : q
+      items.push(
+        { label: 'Copy',                          role: 'copy' },
+        { label: `Search for "${preview}"`,       click: () => createTab(search.buildURL(q, engine.id)) },
+        { type: 'separator' },
+      )
+    } else if (isEditable) {
+      items.push(
+        { label: 'Cut',   role: 'cut' },
+        { label: 'Copy',  role: 'copy' },
+        { label: 'Paste', role: 'paste' },
+        { type: 'separator' },
+      )
+    }
+
+    items.push(
+      { label: 'Back',    enabled: wc.canGoBack(),    click: () => wc.goBack() },
+      { label: 'Forward', enabled: wc.canGoForward(), click: () => wc.goForward() },
+      { label: 'Reload',  click: () => wc.reload() },
+      { type: 'separator' },
+      { label: 'Print Preview', click: () => openPrintPreview() },
+      { label: 'Save as PDF',   click: () => toChrome(IPC.PRINT_TO_PDF, {}) },
+      { type: 'separator' },
+      { label: 'Inspect', click: () => wc.openDevTools() },
+    )
+
+    // Strip leading/trailing and consecutive separators
+    const clean = items.filter((item, i, arr) => {
+      if (item.type !== 'separator') return true
+      if (i === 0 || i === arr.length - 1) return false
+      return arr[i - 1].type !== 'separator'
+    })
+
+    if (clean.length) Menu.buildFromTemplate(clean).popup({ window: win })
+  })
+
   // Open new windows as a tab instead
   wc.setWindowOpenHandler(({ url }) => {
     createTab(url)
@@ -249,6 +334,7 @@ function attachEvents(id, view) {
     else if (ctrl && input.key === '0')                              { event.preventDefault(); resetZoom() }
     else if (ctrl && !input.shift && input.key === 'p')              { event.preventDefault(); openPrintPreview() }
     else if (ctrl &&  input.shift && input.key === 'p')              { event.preventDefault(); toChrome(IPC.PRINT_TO_PDF, {}) }
+    else if (ctrl &&  input.shift && input.key === 'T')              { event.preventDefault(); reopenLastClosed() }
     // Ctrl+1–9 tab switching
     else if (ctrl && input.key >= '1' && input.key <= '9') {
       event.preventDefault()
@@ -313,6 +399,12 @@ function switchTab(id) {
 function closeTab(id) {
   const t = tabs.get(id); if (!t) return
   const wasActive = id === activeId
+
+  // Remember for Ctrl+Shift+T (skip newtab and internal pages)
+  if (t.url && !t.url.startsWith('litzium://') && !t.url.startsWith('file://')) {
+    closedTabs.push({ url: t.url, title: t.title })
+    if (closedTabs.length > MAX_CLOSED) closedTabs.shift()
+  }
 
   win.contentView.removeChildView(t.view)
   t.view.webContents.close()
@@ -391,6 +483,66 @@ function resetZoom() {
   toChrome(IPC.ZOOM_CHANGED, { tabId: activeId, zoomFactor: 1 })
 }
 
+// ─── Pinned tabs ─────────────────────────────────────────────────────────────
+
+function pinTab(id) {
+  const t = tabs.get(id); if (!t) return
+  t.pinned = true
+  toChrome(IPC.TAB_UPDATED, { id, pinned: true })
+}
+
+function unpinTab(id) {
+  const t = tabs.get(id); if (!t) return
+  t.pinned = false
+  toChrome(IPC.TAB_UPDATED, { id, pinned: false })
+}
+
+// ─── Reopen last closed tab ───────────────────────────────────────────────────
+
+function reopenLastClosed() {
+  const entry = closedTabs.pop()
+  if (entry) createTab(entry.url)
+}
+
+// ─── Session ─────────────────────────────────────────────────────────────────
+
+function saveSession() {
+  const tabList = Array.from(tabs.values())
+    .filter(t => t.url && !t.url.startsWith('litzium://') && !t.url.startsWith('file://'))
+    .map(t => ({ url: t.url, title: t.title, pinned: t.pinned }))
+
+  if (tabList.length === 0) {
+    try { fs.unlinkSync(getSessionFile()) } catch {}
+    return
+  }
+
+  try {
+    fs.writeFileSync(getSessionFile(), JSON.stringify({
+      tabs:      tabList,
+      activeUrl: tabs.get(activeId)?.url,
+      savedAt:   Date.now(),
+    }), 'utf8')
+  } catch (e) { console.warn('[session] save failed:', e.message) }
+}
+
+function loadSession() {
+  try {
+    const data = JSON.parse(fs.readFileSync(getSessionFile(), 'utf8'))
+    return (data?.tabs?.length > 0) ? data : null
+  } catch { return null }
+}
+
+function clearSession() {
+  try { fs.unlinkSync(getSessionFile()) } catch {}
+}
+
+function restoreSession() {
+  const data = loadSession()
+  if (!data) return
+  clearSession()
+  data.tabs.forEach(t => createTab(t.url))
+}
+
 // ─── Print Preview ───────────────────────────────────────────────────────────
 
 /**
@@ -443,10 +595,13 @@ module.exports = {
   init,
   createTab, closeTab, switchTab,
   navigate, goBack, goForward, reload, stop, openDevTools,
-  updateAllBounds, setOmniboxOpen, setFindBarOpen,
+  updateAllBounds, setOmniboxOpen, setFindBarOpen, setShelfOpen,
   findInPage, findNext, stopFindInPage,
   resetZoom, setSearchEngine,
   getActiveWebContents,
   openPrintPreview, getPrintPreviewTarget,
+  pinTab, unpinTab,
+  reopenLastClosed,
+  saveSession, loadSession, clearSession, restoreSession,
   get size() { return tabs.size },
 }
