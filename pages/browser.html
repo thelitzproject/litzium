@@ -167,7 +167,23 @@
   <!-- Autocomplete dropdown -->
   <div id="suggestions-dropdown" role="listbox" aria-label="Search suggestions" hidden></div>
 
+  <!-- Session restore banner -->
+  <div id="session-banner" hidden>
+    <span class="session-banner-text"></span>
+    <button class="session-btn restore" id="session-restore-btn">Restore</button>
+    <button class="session-btn dismiss" id="session-dismiss-btn">Dismiss</button>
+  </div>
+
 </div><!-- #browser-chrome -->
+
+<!-- Tab context menu (custom HTML, portal outside chrome) -->
+<div id="tab-ctx-menu" style="display:none"></div>
+
+<!-- Download shelf -->
+<div id="download-shelf" hidden>
+  <div id="shelf-items"></div>
+  <button id="shelf-close" title="Close" aria-label="Close download shelf">×</button>
+</div>
 
 <script src="../javas/renderer/browser.js"></script>
 </body>

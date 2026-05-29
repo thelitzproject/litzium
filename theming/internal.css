@@ -28,6 +28,36 @@
   --radius-sm: 6px;
 }
 
+/* ── Light theme overrides (explicit or via OS preference) ──────────────── */
+:root[data-theme="light"],
+:root[data-theme="system"] {
+  --bg:          #f4f4f9;
+  --surface:     #eeeef8;
+  --surface2:    #e6e6f2;
+  --surface3:    #dcdcee;
+  --border:      #d0d0e4;
+  --text:        #1a1a2e;
+  --sub:         #5a5a82;
+  --muted:       #8888a8;
+  --accent-dim:  rgba(124, 131, 247, 0.12);
+  --accent-glow: rgba(124, 131, 247, 0.06);
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    --bg:          #f4f4f9;
+    --surface:     #eeeef8;
+    --surface2:    #e6e6f2;
+    --surface3:    #dcdcee;
+    --border:      #d0d0e4;
+    --text:        #1a1a2e;
+    --sub:         #5a5a82;
+    --muted:       #8888a8;
+    --accent-dim:  rgba(124, 131, 247, 0.12);
+    --accent-glow: rgba(124, 131, 247, 0.06);
+  }
+}
+
 html, body {
   min-height: 100vh;
   background: var(--bg);

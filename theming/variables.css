@@ -33,4 +33,46 @@
   /* ── Typography ─────────────────────────────────────────────────────────── */
   --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+
+  /* ── Adaptive overlays (dark defaults) ──────────────────────────────────── */
+  --hover-overlay:        rgba(255,255,255,0.07);
+  --hover-overlay-strong: rgba(255,255,255,0.12);
+}
+
+/* ── Explicit light theme ────────────────────────────────────────────────── */
+:root[data-theme="light"] {
+  --bg-window:        #f4f4f9;
+  --bg-tabbar:        #e8e8f2;
+  --bg-navbar:        #eeeef8;
+  --bg-tab-active:    #ffffff;
+  --bg-tab-hover:     #dcdcee;
+  --bg-omnibox:       #ffffff;
+  --bg-omnibox-focus: #ffffff;
+  --text-primary:     #1a1a2e;
+  --text-secondary:   #5a5a82;
+  --text-disabled:    #9090aa;
+  --border-subtle:    #d0d0e4;
+  --danger:           #c42b1c;
+  --hover-overlay:        rgba(0,0,0,0.05);
+  --hover-overlay-strong: rgba(0,0,0,0.09);
+}
+
+/* ── System theme — follow OS preference ────────────────────────────────── */
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    --bg-window:        #f4f4f9;
+    --bg-tabbar:        #e8e8f2;
+    --bg-navbar:        #eeeef8;
+    --bg-tab-active:    #ffffff;
+    --bg-tab-hover:     #dcdcee;
+    --bg-omnibox:       #ffffff;
+    --bg-omnibox-focus: #ffffff;
+    --text-primary:     #1a1a2e;
+    --text-secondary:   #5a5a82;
+    --text-disabled:    #9090aa;
+    --border-subtle:    #d0d0e4;
+    --danger:           #c42b1c;
+    --hover-overlay:        rgba(0,0,0,0.05);
+    --hover-overlay-strong: rgba(0,0,0,0.09);
+  }
 }
