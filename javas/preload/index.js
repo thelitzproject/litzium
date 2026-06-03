@@ -83,6 +83,17 @@ contextBridge.exposeInMainWorld('litzium', {
   openShelf:  (height) => ipcRenderer.send(IPC.SHELF_OPEN,  { height }),
   closeShelf: ()       => ipcRenderer.send(IPC.SHELF_CLOSE),
 
+  // ── Sidebar ───────────────────────────────────────────────────────────
+  openSidebar:  () => ipcRenderer.send(IPC.SIDEBAR_OPEN),
+  closeSidebar: () => ipcRenderer.send(IPC.SIDEBAR_CLOSE),
+
+  // ── Multi-window ──────────────────────────────────────────────────────
+  newWindow: () => ipcRenderer.send(IPC.WIN_NEW),
+
+  // ── Data (sidebar) ────────────────────────────────────────────────────
+  getBookmarks: () => ipcRenderer.invoke(IPC.BOOKMARK_GET_ALL),
+  getHistory:   () => ipcRenderer.invoke(IPC.HISTORY_GET),
+
   // ── IPC event subscription ───────────────────────────────────────────
   /**
    * Subscribe to a main-process event.

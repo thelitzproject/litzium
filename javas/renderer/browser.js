@@ -5,8 +5,6 @@ let activeTabId = null
 
 const $ = id => document.getElementById(id)
 
-// ─── DOM refs ─────────────────────────────────────────────────────────────────
-
 const tabsContainer      = $('tabs-container')
 const newTabBtn          = $('new-tab-btn')
 const backBtn            = $('back-btn')
@@ -16,6 +14,12 @@ const icoReload          = $('ico-reload')
 const icoStop            = $('ico-stop')
 const devtoolsBtn        = $('devtools-btn')
 const settingsBtn        = $('settings-btn')
+const sidebarBtn         = $('sidebar-btn')
+const sidebar            = $('sidebar')
+const sidebarCloseBtn    = $('sidebar-close-btn')
+const sidebarSearch      = $('sidebar-search')
+const sidebarPanelBm     = $('sidebar-panel-bookmarks')
+const sidebarPanelHist   = $('sidebar-panel-history')
 const omnibox            = $('omnibox')
 const addressBar         = $('address-bar')
 const icoGlobe           = $('ico-globe')
@@ -358,6 +362,115 @@ shelfClose.addEventListener('click', () => {
   window.litzium.closeShelf()
 })
 
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
+
+let sidebarOpen       = false
+let sidebarActivePanel = 'bookmarks'
+
+function toggleSidebar() {
+  sidebarOpen ? closeSidebarPanel() : openSidebarPanel()
+}
+
+function openSidebarPanel() {
+  sidebarOpen = true
+  sidebar.hidden = false
+  sidebarBtn.setAttribute('aria-pressed', 'true')
+  window.litzium.openSidebar()
+  loadSidebarPanel(sidebarActivePanel)
+}
+
+function closeSidebarPanel() {
+  sidebarOpen = false
+  sidebar.hidden = true
+  sidebarBtn.setAttribute('aria-pressed', 'false')
+  window.litzium.closeSidebar()
+}
+
+sidebarCloseBtn.addEventListener('click', closeSidebarPanel)
+
+// Tab switching
+sidebar.querySelectorAll('.sidebar-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const panel = btn.dataset.panel
+    sidebar.querySelectorAll('.sidebar-tab').forEach(b => b.classList.remove('active'))
+    btn.classList.add('active')
+    sidebarActivePanel = panel
+    sidebarPanelBm.hidden   = panel !== 'bookmarks'
+    sidebarPanelHist.hidden = panel !== 'history'
+    loadSidebarPanel(panel)
+  })
+})
+
+// Search filter
+sidebarSearch.addEventListener('input', () => {
+  const q = sidebarSearch.value.toLowerCase()
+  const panel = sidebarActivePanel === 'bookmarks' ? sidebarPanelBm : sidebarPanelHist
+  panel.querySelectorAll('.sidebar-item').forEach(el => {
+    const text = el.dataset.filter || ''
+    el.style.display = text.includes(q) ? '' : 'none'
+  })
+})
+
+async function loadSidebarPanel(panel) {
+  if (panel === 'bookmarks') {
+    sidebarPanelBm.innerHTML = '<div class="sidebar-empty">Loading…</div>'
+    try {
+      const items = await window.litzium.getBookmarks()
+      renderSidebarBookmarks(items || [])
+    } catch { sidebarPanelBm.innerHTML = '<div class="sidebar-empty">Could not load bookmarks.</div>' }
+  } else {
+    sidebarPanelHist.innerHTML = '<div class="sidebar-empty">Loading…</div>'
+    try {
+      const items = await window.litzium.getHistory()
+      renderSidebarHistory((items || []).slice(0, 100))
+    } catch { sidebarPanelHist.innerHTML = '<div class="sidebar-empty">Could not load history.</div>' }
+  }
+}
+
+function renderSidebarBookmarks(bookmarks) {
+  if (!bookmarks.length) {
+    sidebarPanelBm.innerHTML = '<div class="sidebar-empty">No bookmarks yet.</div>'
+    return
+  }
+  sidebarPanelBm.innerHTML = ''
+  bookmarks.forEach(bm => {
+    const domain = tryHostname(bm.url)
+    const el = document.createElement('div')
+    el.className = 'sidebar-item'
+    el.dataset.filter = (bm.title + ' ' + bm.url).toLowerCase()
+    el.innerHTML = `
+      <img class="sidebar-item-favicon" src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32" alt="" onerror="this.style.display='none'">
+      <span class="sidebar-item-text">${escHtml(bm.title || bm.url)}</span>
+      <span class="sidebar-item-sub">${escHtml(domain)}</span>`
+    el.addEventListener('click', () => window.litzium.navigate(bm.url))
+    sidebarPanelBm.appendChild(el)
+  })
+}
+
+function renderSidebarHistory(entries) {
+  if (!entries.length) {
+    sidebarPanelHist.innerHTML = '<div class="sidebar-empty">No history yet.</div>'
+    return
+  }
+  sidebarPanelHist.innerHTML = ''
+  entries.forEach(entry => {
+    const domain = tryHostname(entry.url)
+    const el = document.createElement('div')
+    el.className = 'sidebar-item'
+    el.dataset.filter = (entry.title + ' ' + entry.url).toLowerCase()
+    el.innerHTML = `
+      <img class="sidebar-item-favicon" src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32" alt="" onerror="this.style.display='none'">
+      <span class="sidebar-item-text">${escHtml(entry.title || entry.url)}</span>
+      <span class="sidebar-item-sub">${escHtml(domain)}</span>`
+    el.addEventListener('click', () => window.litzium.navigate(entry.url))
+    sidebarPanelHist.appendChild(el)
+  })
+}
+
+function tryHostname(url) {
+  try { return new URL(url).hostname } catch { return url }
+}
+
 // ─── Bookmark star ────────────────────────────────────────────────────────────
 
 function setStarState(isBookmarked) {
@@ -696,6 +809,7 @@ reloadBtn.addEventListener('click', () => {
 newTabBtn.addEventListener('click',   () => window.litzium.newTab())
 devtoolsBtn.addEventListener('click', () => window.litzium.openDevTools())
 settingsBtn.addEventListener('click',  () => window.litzium.navigate('litzium://settings'))
+sidebarBtn.addEventListener('click',   () => toggleSidebar())
 
 // ─── Progress bar ─────────────────────────────────────────────────────────────
 
@@ -728,6 +842,8 @@ document.addEventListener('keydown', e => {
   else if (ctrl && !e.shiftKey && e.key === 'p')   { e.preventDefault(); window.litzium.openPrintPreview() }
   else if (ctrl &&  e.shiftKey && e.key === 'P')   { e.preventDefault(); window.litzium.printToPDF() }
   else if (ctrl &&  e.shiftKey && e.key === 'T')   { e.preventDefault(); window.litzium.reopenLastTab() }
+  else if (ctrl && !e.shiftKey && e.key === 'n')   { e.preventDefault(); window.litzium.newWindow() }
+  else if (ctrl && !e.shiftKey && e.key === 'b')   { e.preventDefault(); toggleSidebar() }
   else if (e.altKey && e.key === 'ArrowLeft')       window.litzium.goBack()
   else if (e.altKey && e.key === 'ArrowRight')      window.litzium.goForward()
   else if (e.key === 'F5')                          { e.preventDefault(); window.litzium.reload() }
