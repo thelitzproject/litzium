@@ -76,6 +76,13 @@ const IPC = {
   PRINT_PREVIEW_PRINT:    'print-preview-print',    // invoke { opts } → { success }
   PRINT_PREVIEW_SAVE:     'print-preview-save',     // invoke { opts } → { saved, filePath? }
 
+  // ── Multi-window ──────────────────────────────────────────────────────────
+  WIN_NEW: 'window-new',  // send — open a new browser window
+
+  // ── Sidebar ───────────────────────────────────────────────────────────────
+  SIDEBAR_OPEN:  'sidebar-open',   // send — chrome tells main sidebar opened
+  SIDEBAR_CLOSE: 'sidebar-close',  // send — chrome tells main sidebar closed
+
   // ── Theme ─────────────────────────────────────────────────────────────────
   THEME_APPLY: 'theme-apply',  // main→chrome: string 'dark'|'light'|'system'
 
