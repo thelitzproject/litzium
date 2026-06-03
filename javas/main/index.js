@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, session, nativeTheme } = require('electron')
 const path = require('path')
 const IPC = require('../../dbus/ipc')
-const tabs = require('./tab-manager')
+const { createTabManager } = require('./tab-manager')
 const { fetchSuggestions } = require('./suggestions')
 const history   = require('../../modules/history')
 const bookmarks = require('../../modules/bookmarks')
@@ -10,10 +10,29 @@ const settings  = require('../../modules/settings')
 const printer   = require('../../printing/print')
 const CHROME_HEIGHT = 88
 
-let win = null
+/** @type {Map<BrowserWindow, ReturnType<typeof createTabManager>>} */
+const windowManagers = new Map()
+
+/** Route an IPC event to the tab manager for the sender's window. */
+function getManager(event) {
+  const bw = BrowserWindow.fromWebContents(event.sender)
+  return bw ? windowManagers.get(bw) : null
+}
+
+/** Return the effective theme string to send to the renderer. */
+function resolveTheme(setting) {
+  return (setting === 'dark' || setting === 'light' || setting === 'system') ? setting : 'dark'
+}
+
+function broadcastTheme(theme) {
+  for (const [bw] of windowManagers) {
+    if (!bw.isDestroyed()) bw.webContents.send(IPC.THEME_APPLY, theme)
+  }
+}
+
 
 function createWindow() {
-  win = new BrowserWindow({
+  const win = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 800,
@@ -25,183 +44,194 @@ function createWindow() {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false, // must be false so preload can require() modules
+      sandbox: false,
     },
   })
+
+  const tabs = createTabManager(win, CHROME_HEIGHT)
+  windowManagers.set(win, tabs)
 
   win.setMenuBarVisibility(false)
   win.loadFile(path.join(__dirname, '../../pages/browser.html'))
 
   win.once('ready-to-show', () => {
     win.show()
-    tabs.init(win, CHROME_HEIGHT)
+    tabs.init()
 
-    // Check for a previous session before creating the default tab
     const pending = tabs.loadSession()
     if (pending && pending.tabs.length > 0) {
-      tabs.createTab('litzium://newtab')  // create one blank tab first
+      tabs.createTab('litzium://newtab')
       win.webContents.send(IPC.SESSION_AVAILABLE, { count: pending.tabs.length })
     } else {
       tabs.createTab('litzium://newtab')
     }
 
-    // Send initial theme to chrome renderer
     win.webContents.send(IPC.THEME_APPLY, resolveTheme(settings.get('browserTheme')))
-
-    // Wire download tracking to the default session
     downloads.setup(session.defaultSession, win, IPC)
-  })
-
-  // Re-send theme when OS preference changes (for 'system' mode)
-  nativeTheme.on('updated', () => {
-    if (settings.get('browserTheme') === 'system') {
-      win?.webContents.send(IPC.THEME_APPLY, 'system')
-    }
   })
 
   win.on('resize',     () => tabs.updateAllBounds())
   win.on('maximize',   () => { win.webContents.send(IPC.WIN_MAXIMIZED, true);  tabs.updateAllBounds() })
   win.on('unmaximize', () => { win.webContents.send(IPC.WIN_MAXIMIZED, false); tabs.updateAllBounds() })
+
+  win.on('closed', () => {
+    windowManagers.delete(win)
+  })
 }
 
-/** Return the effective theme string to send to the renderer. */
-function resolveTheme(setting) {
-  // We send 'system' and let CSS media queries handle OS detection
-  return (setting === 'dark' || setting === 'light' || setting === 'system') ? setting : 'dark'
-}
+// ─── IPC setup (registered once; routed per-window via event.sender) ──────────
 
 function setupIPC() {
-  // ── Window controls ────────────────────────────────────────────────────
-  ipcMain.on(IPC.WIN_MINIMIZE,  () => win?.minimize())
-  ipcMain.on(IPC.WIN_MAXIMIZE,  () => win?.isMaximized() ? win.unmaximize() : win?.maximize())
-  ipcMain.on(IPC.WIN_CLOSE,     () => win?.close())
 
-  // ── Tabs ───────────────────────────────────────────────────────────────
-  ipcMain.on(IPC.TAB_NEW,    (_, url)   => tabs.createTab(url))
-  ipcMain.on(IPC.TAB_CLOSE,  (_, tabId) => tabs.closeTab(tabId))
-  ipcMain.on(IPC.TAB_SWITCH, (_, tabId) => tabs.switchTab(tabId))
+  // ── Window controls ────────────────────────────────────────────────────────
+  ipcMain.on(IPC.WIN_NEW,      ()      => createWindow())
+  ipcMain.on(IPC.WIN_MINIMIZE, event   => BrowserWindow.fromWebContents(event.sender)?.minimize())
+  ipcMain.on(IPC.WIN_MAXIMIZE, event   => {
+    const w = BrowserWindow.fromWebContents(event.sender)
+    w?.isMaximized() ? w.unmaximize() : w?.maximize()
+  })
+  ipcMain.on(IPC.WIN_CLOSE,    event   => BrowserWindow.fromWebContents(event.sender)?.close())
 
-  // ── Navigation ─────────────────────────────────────────────────────────
-  ipcMain.on(IPC.NAV_GO,      (_, url) => tabs.navigate(url))
-  ipcMain.on(IPC.NAV_BACK,    ()       => tabs.goBack())
-  ipcMain.on(IPC.NAV_FORWARD, ()       => tabs.goForward())
-  ipcMain.on(IPC.NAV_RELOAD,  ()       => tabs.reload())
-  ipcMain.on(IPC.NAV_STOP,    ()       => tabs.stop())
-  ipcMain.on(IPC.NAV_HOME,    ()       => tabs.navigate('litzium://newtab'))
-  ipcMain.on(IPC.DEVTOOLS_OPEN, () => tabs.openDevTools())
+  // ── Tabs ───────────────────────────────────────────────────────────────────
+  ipcMain.on(IPC.TAB_NEW,    (event, url)   => getManager(event)?.createTab(url))
+  ipcMain.on(IPC.TAB_CLOSE,  (event, tabId) => getManager(event)?.closeTab(tabId))
+  ipcMain.on(IPC.TAB_SWITCH, (event, tabId) => getManager(event)?.switchTab(tabId))
 
-  // ── Autocomplete suggestions ───────────────────────────────────────────
+  // ── Navigation ─────────────────────────────────────────────────────────────
+  ipcMain.on(IPC.NAV_GO,      (event, url) => getManager(event)?.navigate(url))
+  ipcMain.on(IPC.NAV_BACK,    event        => getManager(event)?.goBack())
+  ipcMain.on(IPC.NAV_FORWARD, event        => getManager(event)?.goForward())
+  ipcMain.on(IPC.NAV_RELOAD,  event        => getManager(event)?.reload())
+  ipcMain.on(IPC.NAV_STOP,    event        => getManager(event)?.stop())
+  ipcMain.on(IPC.NAV_HOME,    event        => getManager(event)?.navigate('litzium://newtab'))
+  ipcMain.on(IPC.DEVTOOLS_OPEN, event      => getManager(event)?.openDevTools())
+
+  // ── Autocomplete ───────────────────────────────────────────────────────────
   ipcMain.handle(IPC.SUGGESTIONS_GET, async (_, { query, provider } = {}) => {
-    // Respect the user's configured suggestions provider unless overridden
     const p = provider ?? settings.get('suggestionsProvider') ?? 'google'
     return fetchSuggestions(query, p)
   })
-  ipcMain.on(IPC.OMNIBOX_EXPAND,   (_, { height } = {}) => tabs.setOmniboxOpen(true,  height ?? 0))
-  ipcMain.on(IPC.OMNIBOX_COLLAPSE, ()                   => tabs.setOmniboxOpen(false, 0))
+  ipcMain.on(IPC.OMNIBOX_EXPAND,   (event, { height } = {}) => getManager(event)?.setOmniboxOpen(true,  height ?? 0))
+  ipcMain.on(IPC.OMNIBOX_COLLAPSE, event                    => getManager(event)?.setOmniboxOpen(false, 0))
 
-  // ── History ────────────────────────────────────────────────────────────
-  ipcMain.handle(IPC.HISTORY_GET,    ()         => history.getAll())
+  // ── History ────────────────────────────────────────────────────────────────
+  ipcMain.handle(IPC.HISTORY_GET,    ()          => history.getAll())
   ipcMain.handle(IPC.HISTORY_REMOVE, (_, { id }) => { history.remove(id); return true })
-  ipcMain.on(IPC.HISTORY_CLEAR,      ()         => history.clear())
+  ipcMain.on(IPC.HISTORY_CLEAR,      ()          => history.clear())
 
-  // ── Bookmarks ──────────────────────────────────────────────────────────
+  // ── Bookmarks ──────────────────────────────────────────────────────────────
   ipcMain.handle(IPC.BOOKMARK_GET_ALL, () => bookmarks.getAll())
   ipcMain.handle(IPC.BOOKMARK_IS,      (_, { url }) => bookmarks.has(url))
   ipcMain.handle(IPC.BOOKMARK_REMOVE,  (_, { id })  => { bookmarks.remove(id); return true })
-  ipcMain.handle(IPC.BOOKMARK_TOGGLE,  (_, { url, title, favicon }) => {
+  ipcMain.handle(IPC.BOOKMARK_TOGGLE,  (event, { url, title, favicon }) => {
+    const bw = BrowserWindow.fromWebContents(event.sender)
     if (bookmarks.has(url)) {
-      bookmarks.remove(url)   // remove() accepts url
-      win?.webContents.send(IPC.BOOKMARK_STATE, { url, isBookmarked: false })
+      bookmarks.remove(url)
+      bw?.webContents.send(IPC.BOOKMARK_STATE, { url, isBookmarked: false })
       return { isBookmarked: false }
     } else {
       const bm = bookmarks.add({ url, title, favicon })
-      win?.webContents.send(IPC.BOOKMARK_STATE, { url, isBookmarked: true })
+      bw?.webContents.send(IPC.BOOKMARK_STATE, { url, isBookmarked: true })
       return { isBookmarked: true, bookmark: bm }
     }
   })
 
-  // ── Downloads ──────────────────────────────────────────────────────────
+  // ── Downloads ──────────────────────────────────────────────────────────────
   ipcMain.handle(IPC.DOWNLOAD_GET_ALL, () => downloads.getAll())
   ipcMain.on(IPC.DOWNLOAD_OPEN,        (_, { id }) => downloads.openFile(id))
   ipcMain.on(IPC.DOWNLOAD_SHOW,        (_, { id }) => downloads.showInFolder(id))
   ipcMain.on(IPC.DOWNLOAD_CLEAR,       ()          => downloads.clear())
 
-  // ── Settings ───────────────────────────────────────────────────────────
+  // ── Settings ───────────────────────────────────────────────────────────────
   ipcMain.handle(IPC.SETTINGS_GET_ALL, () => settings.getAll())
   ipcMain.on(IPC.SETTINGS_SET, (_, { key, value }) => {
     settings.set(key, value)
-    if (key === 'searchEngine') tabs.setSearchEngine(value)
-    if (key === 'browserTheme') win?.webContents.send(IPC.THEME_APPLY, resolveTheme(value))
+    if (key === 'searchEngine') windowManagers.forEach(m => m.setSearchEngine(value))
+    if (key === 'browserTheme') broadcastTheme(resolveTheme(value))
   })
 
-  // ── Find in page ───────────────────────────────────────────────────────
-  ipcMain.on(IPC.FIND_START,    (_, { text, forward = true } = {}) => tabs.findInPage(text, forward))
-  ipcMain.on(IPC.FIND_STOP,     () => tabs.stopFindInPage())
-  ipcMain.on(IPC.FIND_BAR_OPEN,  () => tabs.setFindBarOpen(true))
-  ipcMain.on(IPC.FIND_BAR_CLOSE, () => tabs.setFindBarOpen(false))
+  // ── Find in page ───────────────────────────────────────────────────────────
+  ipcMain.on(IPC.FIND_START,     (event, { text, forward = true } = {}) => getManager(event)?.findInPage(text, forward))
+  ipcMain.on(IPC.FIND_STOP,      event => getManager(event)?.stopFindInPage())
+  ipcMain.on(IPC.FIND_BAR_OPEN,  event => getManager(event)?.setFindBarOpen(true))
+  ipcMain.on(IPC.FIND_BAR_CLOSE, event => getManager(event)?.setFindBarOpen(false))
 
-  // ── Zoom ───────────────────────────────────────────────────────────────
-  ipcMain.on(IPC.ZOOM_RESET, () => tabs.resetZoom())
-
-  // ── Print ───────────────────────────────────────────────────────────────
-  ipcMain.on(IPC.PRINT, async () => {
-    const wc = tabs.getActiveWebContents()
-    if (!wc) return
-    const result = await printer.printPage(wc)
-    win?.webContents.send(IPC.PRINT_RESULT, result)
-  })
-
-  ipcMain.on(IPC.PRINT_TO_PDF, async () => {
-    const wc = tabs.getActiveWebContents()
-    if (!wc || !win) return
-    const result = await printer.savePDF(wc, win)
-    win?.webContents.send(IPC.PRINT_RESULT, result)
-  })
+  // ── Zoom ───────────────────────────────────────────────────────────────────
+  ipcMain.on(IPC.ZOOM_RESET, event => getManager(event)?.resetZoom())
 
   // ── Pinned tabs ────────────────────────────────────────────────────────────
-  ipcMain.on(IPC.TAB_PIN,   (_, { tabId }) => tabs.pinTab(tabId))
-  ipcMain.on(IPC.TAB_UNPIN, (_, { tabId }) => tabs.unpinTab(tabId))
+  ipcMain.on(IPC.TAB_PIN,   (event, { tabId }) => getManager(event)?.pinTab(tabId))
+  ipcMain.on(IPC.TAB_UNPIN, (event, { tabId }) => getManager(event)?.unpinTab(tabId))
 
   // ── Reopen last closed tab ─────────────────────────────────────────────────
-  ipcMain.on(IPC.TAB_REOPEN_LAST, () => tabs.reopenLastClosed())
+  ipcMain.on(IPC.TAB_REOPEN_LAST, event => getManager(event)?.reopenLastClosed())
 
-  // ── Session restore ────────────────────────────────────────────────────────
-  ipcMain.on(IPC.SESSION_RESTORE, () => tabs.restoreSession())
-  ipcMain.on(IPC.SESSION_DISMISS, () => tabs.clearSession())
+  // ── Session ────────────────────────────────────────────────────────────────
+  ipcMain.on(IPC.SESSION_RESTORE, event => getManager(event)?.restoreSession())
+  ipcMain.on(IPC.SESSION_DISMISS, event => getManager(event)?.clearSession())
 
   // ── Download shelf ─────────────────────────────────────────────────────────
-  ipcMain.on(IPC.SHELF_OPEN,  (_, { height } = {}) => tabs.setShelfOpen(true,  height ?? 52))
-  ipcMain.on(IPC.SHELF_CLOSE, ()                    => tabs.setShelfOpen(false, 0))
+  ipcMain.on(IPC.SHELF_OPEN,  (event, { height } = {}) => getManager(event)?.setShelfOpen(true,  height ?? 52))
+  ipcMain.on(IPC.SHELF_CLOSE, event                    => getManager(event)?.setShelfOpen(false, 0))
+
+  // ── Sidebar ────────────────────────────────────────────────────────────────
+  ipcMain.on(IPC.SIDEBAR_OPEN,  event => getManager(event)?.setSidebarOpen(true))
+  ipcMain.on(IPC.SIDEBAR_CLOSE, event => getManager(event)?.setSidebarOpen(false))
+
+  // ── Print ───────────────────────────────────────────────────────────────────
+  ipcMain.on(IPC.PRINT, async event => {
+    const wc = getManager(event)?.getActiveWebContents()
+    if (!wc) return
+    const bw = BrowserWindow.fromWebContents(event.sender)
+    const result = await printer.printPage(wc)
+    bw?.webContents.send(IPC.PRINT_RESULT, result)
+  })
+
+  ipcMain.on(IPC.PRINT_TO_PDF, async event => {
+    const manager = getManager(event)
+    const wc = manager?.getActiveWebContents()
+    const bw = BrowserWindow.fromWebContents(event.sender)
+    if (!wc || !bw) return
+    const result = await printer.savePDF(wc, bw)
+    bw.webContents.send(IPC.PRINT_RESULT, result)
+  })
 
   // ── Print Preview ──────────────────────────────────────────────────────────
-  ipcMain.on(IPC.PRINT_PREVIEW_OPEN, () => tabs.openPrintPreview())
-  ipcMain.handle(IPC.PRINT_PREVIEW_GENERATE, async (_, opts = {}) => {
-    const wc = tabs.getPrintPreviewTarget()
+  ipcMain.on(IPC.PRINT_PREVIEW_OPEN, event => getManager(event)?.openPrintPreview())
+
+  ipcMain.handle(IPC.PRINT_PREVIEW_GENERATE, async (event, opts = {}) => {
+    const wc = getManager(event)?.getPrintPreviewTarget()
     if (!wc) return { success: false, error: 'No print target available' }
     return printer.generatePreviewPDF(wc, opts)
   })
 
-  ipcMain.handle(IPC.PRINT_PREVIEW_PRINT, async (_, opts = {}) => {
-    const wc = tabs.getPrintPreviewTarget()
+  ipcMain.handle(IPC.PRINT_PREVIEW_PRINT, async (event, opts = {}) => {
+    const wc = getManager(event)?.getPrintPreviewTarget()
     if (!wc) return { success: false, failureReason: 'No print target available' }
     return printer.printPage(wc, opts)
   })
 
-  ipcMain.handle(IPC.PRINT_PREVIEW_SAVE, async (_, opts = {}) => {
-    const wc = tabs.getPrintPreviewTarget()
-    if (!wc || !win) return { saved: false, error: 'No print target available' }
-    return printer.savePDF(wc, win, opts)
+  ipcMain.handle(IPC.PRINT_PREVIEW_SAVE, async (event, opts = {}) => {
+    const wc = getManager(event)?.getPrintPreviewTarget()
+    const bw = BrowserWindow.fromWebContents(event.sender)
+    if (!wc || !bw) return { saved: false, error: 'No print target available' }
+    return printer.savePDF(wc, bw, opts)
   })
 }
 
+// ─── App lifecycle ────────────────────────────────────────────────────────────
 
 app.whenReady().then(() => {
   createWindow()
   setupIPC()
+
+  nativeTheme.on('updated', () => {
+    if (settings.get('browserTheme') === 'system') broadcastTheme('system')
+  })
 })
 
 app.on('before-quit', () => {
-  tabs.saveSession()
+  windowManagers.forEach(m => m.saveSession())
 })
 
 app.on('window-all-closed', () => {
