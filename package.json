@@ -33,6 +33,7 @@
       "backgrounds/**/*",
       "modules/**/*",
       "dbus/**/*",
+      "printing/**/*",
       "slick/**/*",
       "!**/*.map",
       "!**/node_modules/.cache"
