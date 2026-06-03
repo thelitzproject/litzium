@@ -175,3 +175,73 @@ function escHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
 }
+
+// ─── Speed dial (most visited from history) ───────────────────────────────────
+
+async function loadSpeedDial() {
+  if (!api) return
+  try {
+    const allHistory = await api.getHistory()
+    if (!allHistory || allHistory.length === 0) return
+
+    // Aggregate visit counts per domain
+    const domainMap = new Map()
+    for (const entry of allHistory) {
+      let hostname
+      try { hostname = new URL(entry.url).hostname.replace(/^www\./, '') }
+      catch { continue }
+      if (!hostname) continue
+
+      const existing = domainMap.get(hostname)
+      if (existing) {
+        existing.count++
+        if (entry.visitedAt > existing.visitedAt) {
+          existing.url   = entry.url
+          existing.title = entry.title || hostname
+        }
+      } else {
+        domainMap.set(hostname, {
+          hostname,
+          url:       entry.url,
+          title:     entry.title || hostname,
+          count:     1,
+          visitedAt: entry.visitedAt ?? 0,
+        })
+      }
+    }
+
+    const topSites = [...domainMap.values()]
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8)
+
+    if (topSites.length === 0) return
+
+    renderSpeedDial(topSites)
+  } catch {}
+}
+
+function renderSpeedDial(sites) {
+  const wrap = document.getElementById('nt-speed-dial')
+  const grid = document.getElementById('nt-speed-dial-grid')
+  grid.innerHTML = ''
+
+  sites.forEach(site => {
+    const item = document.createElement('a')
+    item.href      = site.url
+    item.className = 'nt-dial-item'
+    item.title     = site.title
+
+    const faviconSrc = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(site.hostname)}&sz=48`
+    item.innerHTML = `
+      <div class="nt-dial-icon">
+        <img src="${faviconSrc}" alt="" width="24" height="24"
+          onerror="this.parentElement.innerHTML='<span class=\\'nt-dial-letter\\'>${escHtml(site.hostname.charAt(0).toUpperCase())}</span>'">
+      </div>
+      <span class="nt-dial-label">${escHtml(site.hostname)}</span>`
+    grid.appendChild(item)
+  })
+
+  wrap.hidden = false
+}
+
+loadSpeedDial()

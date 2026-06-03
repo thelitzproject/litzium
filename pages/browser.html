@@ -120,6 +120,11 @@
         </svg>
         <span id="dl-badge" class="dl-badge"></span>
       </button>
+      <button id="sidebar-btn" class="icon-btn nav-btn" title="Sidebar (Ctrl+B)" aria-label="Toggle sidebar" aria-pressed="false">
+        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
+        </svg>
+      </button>
       <button id="devtools-btn" class="icon-btn nav-btn" title="DevTools (F12)" aria-label="Open DevTools">
         <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
           <path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
@@ -178,6 +183,28 @@
 
 <!-- Tab context menu (custom HTML, portal outside chrome) -->
 <div id="tab-ctx-menu" style="display:none"></div>
+
+<!-- Sidebar -->
+<div id="sidebar" hidden>
+  <div id="sidebar-header">
+    <div id="sidebar-tabs">
+      <button class="sidebar-tab active" data-panel="bookmarks">Bookmarks</button>
+      <button class="sidebar-tab" data-panel="history">History</button>
+    </div>
+    <button id="sidebar-close-btn" class="icon-btn" title="Close sidebar" aria-label="Close sidebar">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+    </button>
+  </div>
+  <div id="sidebar-search-wrap">
+    <input id="sidebar-search" type="text" placeholder="Filter…" autocomplete="off" spellcheck="false">
+  </div>
+  <div id="sidebar-panel-bookmarks" class="sidebar-panel">
+    <div class="sidebar-empty">Loading…</div>
+  </div>
+  <div id="sidebar-panel-history" class="sidebar-panel" hidden>
+    <div class="sidebar-empty">Loading…</div>
+  </div>
+</div>
 
 <!-- Download shelf -->
 <div id="download-shelf" hidden>
