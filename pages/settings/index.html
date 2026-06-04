@@ -8,10 +8,12 @@
   <style>
     .settings-nav {
       display: flex;
+      flex-wrap: wrap;
       gap: 4px;
       margin-bottom: 28px;
       border-bottom: 1px solid var(--border);
       padding-bottom: 0;
+      overflow-x: auto;
     }
 
     .settings-tab {
@@ -27,6 +29,7 @@
       border-left: none;
       border-right: none;
       font-family: var(--font);
+      white-space: nowrap;
     }
 
     .settings-tab:hover { color: var(--text); }
@@ -105,7 +108,7 @@
             <div class="setting-desc">Display website icons in the tab bar</div>
           </div>
           <div class="setting-control">
-            <label class="ip-toggle"><input type="checkbox" checked><span class="ip-toggle-track"></span></label>
+            <label class="ip-toggle"><input type="checkbox" data-key="showTabFavicons" checked><span class="ip-toggle-track"></span></label>
           </div>
         </div>
         <div class="setting-row">
@@ -114,7 +117,7 @@
             <div class="setting-desc">Middle-click or Ctrl+click links open in a background tab</div>
           </div>
           <div class="setting-control">
-            <label class="ip-toggle"><input type="checkbox"><span class="ip-toggle-track"></span></label>
+            <label class="ip-toggle"><input type="checkbox" data-key="openNewTabsInBackground"><span class="ip-toggle-track"></span></label>
           </div>
         </div>
         <div class="setting-row">
@@ -123,7 +126,7 @@
             <div class="setting-desc">Show a prompt when closing a window with multiple tabs open</div>
           </div>
           <div class="setting-control">
-            <label class="ip-toggle"><input type="checkbox" checked><span class="ip-toggle-track"></span></label>
+            <label class="ip-toggle"><input type="checkbox" data-key="confirmCloseTabs" checked><span class="ip-toggle-track"></span></label>
           </div>
         </div>
       </div>
@@ -135,10 +138,10 @@
         <div class="setting-row">
           <div>
             <div class="setting-label">Download location</div>
-            <div class="setting-desc">Where files are saved by default</div>
+            <div class="setting-desc" id="dl-path-display">Default</div>
           </div>
           <div class="setting-control">
-            <button class="ip-btn">Change…</button>
+            <button class="ip-btn" id="dl-change-btn">Change…</button>
           </div>
         </div>
         <div class="setting-row">
@@ -147,7 +150,7 @@
             <div class="setting-desc">Show a save dialog for every download</div>
           </div>
           <div class="setting-control">
-            <label class="ip-toggle"><input type="checkbox"><span class="ip-toggle-track"></span></label>
+            <label class="ip-toggle"><input type="checkbox" data-key="askDownloadLocation"><span class="ip-toggle-track"></span></label>
           </div>
         </div>
       </div>
@@ -165,8 +168,8 @@
             <div class="setting-desc">Choose the colour scheme for the browser chrome</div>
           </div>
           <div class="setting-control">
-            <select class="ip-select">
-              <option value="dark" selected>Dark (default)</option>
+            <select class="ip-select" data-key="browserTheme">
+              <option value="dark">Dark (default)</option>
               <option value="light">Light</option>
               <option value="system">Follow system</option>
             </select>
@@ -184,13 +187,31 @@
             <div class="setting-desc">Gradient shown on the new tab page</div>
           </div>
           <div class="setting-control">
-            <select class="ip-select">
-              <option value="aurora" selected>Aurora</option>
+            <select class="ip-select" data-key="newtabBackground">
+              <option value="aurora">Aurora</option>
               <option value="midnight">Midnight</option>
               <option value="ocean">Ocean</option>
               <option value="forest">Forest</option>
               <option value="sunset">Sunset</option>
               <option value="slate">Slate</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ip-section">
+      <div class="ip-section-title">Clock</div>
+      <div class="ip-card">
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Clock format</div>
+            <div class="setting-desc">Display time in 12-hour or 24-hour format on the New Tab page</div>
+          </div>
+          <div class="setting-control">
+            <select class="ip-select" data-key="clockFormat">
+              <option value="24h">24-hour</option>
+              <option value="12h">12-hour (AM/PM)</option>
             </select>
           </div>
         </div>
@@ -209,7 +230,7 @@
             <div class="setting-desc">Record visited pages in <a href="litzium://history">litzium://history</a></div>
           </div>
           <div class="setting-control">
-            <label class="ip-toggle"><input type="checkbox" checked><span class="ip-toggle-track"></span></label>
+            <label class="ip-toggle"><input type="checkbox" data-key="saveHistory" checked><span class="ip-toggle-track"></span></label>
           </div>
         </div>
         <div class="setting-row">
@@ -218,7 +239,7 @@
             <div class="setting-desc">Erase history, cookies, and cached files</div>
           </div>
           <div class="setting-control">
-            <button class="ip-btn">Clear now…</button>
+            <button class="ip-btn" id="clear-data-btn">Clear now…</button>
           </div>
         </div>
       </div>
@@ -232,7 +253,7 @@
             <div class="setting-label">Block insecure content on HTTPS pages</div>
           </div>
           <div class="setting-control">
-            <label class="ip-toggle"><input type="checkbox" checked><span class="ip-toggle-track"></span></label>
+            <label class="ip-toggle"><input type="checkbox" data-key="blockInsecureContent" checked><span class="ip-toggle-track"></span></label>
           </div>
         </div>
         <div class="setting-row">
@@ -240,7 +261,7 @@
             <div class="setting-label">Send Do Not Track header</div>
           </div>
           <div class="setting-control">
-            <label class="ip-toggle"><input type="checkbox"><span class="ip-toggle-track"></span></label>
+            <label class="ip-toggle"><input type="checkbox" data-key="doNotTrack"><span class="ip-toggle-track"></span></label>
           </div>
         </div>
       </div>
@@ -258,8 +279,8 @@
             <div class="setting-desc">Used when you type a query into the address bar</div>
           </div>
           <div class="setting-control">
-            <select class="ip-select">
-              <option value="google" selected>Google</option>
+            <select class="ip-select" data-key="searchEngine">
+              <option value="google">Google</option>
               <option value="bing">Bing</option>
               <option value="duckduckgo">DuckDuckGo</option>
               <option value="brave">Brave Search</option>
@@ -273,7 +294,7 @@
             <div class="setting-desc">Autocomplete queries as you type in the address bar</div>
           </div>
           <div class="setting-control">
-            <label class="ip-toggle"><input type="checkbox" checked><span class="ip-toggle-track"></span></label>
+            <label class="ip-toggle"><input type="checkbox" data-key="suggestionsEnabled" checked><span class="ip-toggle-track"></span></label>
           </div>
         </div>
       </div>
@@ -290,7 +311,7 @@
             <div class="setting-label">Open New Tab page</div>
           </div>
           <div class="setting-control">
-            <label class="ip-toggle"><input type="radio" name="startup" checked><span class="ip-toggle-track"></span></label>
+            <label class="ip-toggle"><input type="radio" name="startup" data-key="startupBehavior" value="newtab" checked><span class="ip-toggle-track"></span></label>
           </div>
         </div>
         <div class="setting-row">
@@ -299,7 +320,7 @@
             <div class="setting-desc">Restore the tabs from the previous session</div>
           </div>
           <div class="setting-control">
-            <label class="ip-toggle"><input type="radio" name="startup"><span class="ip-toggle-track"></span></label>
+            <label class="ip-toggle"><input type="radio" name="startup" data-key="startupBehavior" value="restore"><span class="ip-toggle-track"></span></label>
           </div>
         </div>
       </div>
@@ -318,52 +339,28 @@
     })
   })
 
-  // ── Settings persistence ────────────────────────────────────────────────────
   const api = window.litzPagesAPI
 
-  // Map of setting key → query selector(s) of the control
-  const BINDINGS = {
-    showTabFavicons:         '[data-key="showTabFavicons"]',
-    openNewTabsInBackground: '[data-key="openNewTabsInBackground"]',
-    confirmCloseTabs:        '[data-key="confirmCloseTabs"]',
-    askDownloadLocation:     '[data-key="askDownloadLocation"]',
-    browserTheme:            '[data-key="browserTheme"]',
-    newtabBackground:        '[data-key="newtabBackground"]',
-    saveHistory:             '[data-key="saveHistory"]',
-    searchEngine:            '[data-key="searchEngine"]',
-    suggestionsEnabled:      '[data-key="suggestionsEnabled"]',
-    startupBehavior:         '[data-key="startupBehavior"]',
-  }
-
-  // Add data-key attributes to existing controls
-  const keyMap = [
-    ['showTabFavicons',          '#panel-general input[type=checkbox]:nth-of-type(1)'],
-    ['openNewTabsInBackground',  '#panel-general input[type=checkbox]:nth-of-type(2)'],
-    ['confirmCloseTabs',         '#panel-general input[type=checkbox]:nth-of-type(3)'],
-    ['askDownloadLocation',      '#panel-general input[type=checkbox]:nth-of-type(4)'],
-    ['browserTheme',             '#panel-appearance select:nth-of-type(1)'],
-    ['newtabBackground',         '#panel-appearance select:nth-of-type(2)'],
-    ['saveHistory',              '#panel-privacy input[type=checkbox]:nth-of-type(1)'],
-    ['searchEngine',             '#panel-search select:nth-of-type(1)'],
-    ['suggestionsEnabled',       '#panel-search input[type=checkbox]:nth-of-type(1)'],
-  ]
-
-  keyMap.forEach(([key, sel]) => {
-    const el = document.querySelector(sel)
-    if (el) el.dataset.key = key
-  })
-
-  // Load and apply stored settings
-  async function applySettings(s) {
+  // ── Apply stored settings to controls ──────────────────────────────────────
+  function applySettings(s) {
     Object.entries(s).forEach(([key, value]) => {
-      const el = document.querySelector(`[data-key="${key}"]`)
-      if (!el) return
-      if (el.type === 'checkbox' || el.type === 'radio') {
-        el.checked = Boolean(value)
-      } else {
-        el.value = String(value)
-      }
+      const els = [...document.querySelectorAll(`[data-key="${key}"]`)]
+      if (!els.length) return
+      els.forEach(el => {
+        if (el.type === 'radio') {
+          el.checked = (el.value === String(value))
+        } else if (el.type === 'checkbox') {
+          el.checked = Boolean(value)
+        } else if (el.tagName === 'SELECT') {
+          el.value = String(value)
+        }
+      })
     })
+
+    // Show current download location
+    const loc = s.downloadLocation
+    const dlDisplay = document.getElementById('dl-path-display')
+    if (dlDisplay) dlDisplay.textContent = loc || 'Default'
   }
 
   async function init() {
@@ -373,13 +370,44 @@
   }
   init()
 
-  // Persist changes immediately
+  // ── Persist changes immediately ────────────────────────────────────────────
   document.addEventListener('change', e => {
-    const el = e.target
+    const el  = e.target
     const key = el.dataset.key
     if (!key || !api) return
-    const value = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value
+    let value
+    if (el.type === 'radio') {
+      if (!el.checked) return
+      value = el.value
+    } else if (el.type === 'checkbox') {
+      value = el.checked
+    } else {
+      value = el.value
+    }
     api.setSetting(key, value)
+  })
+
+  // ── Clear browsing data ────────────────────────────────────────────────────
+  const clearBtn = document.getElementById('clear-data-btn')
+  clearBtn.addEventListener('click', async () => {
+    if (!api) return
+    clearBtn.disabled = true
+    clearBtn.textContent = 'Clearing…'
+    await api.clearBrowsingData()
+    clearBtn.textContent = 'Cleared'
+    setTimeout(() => {
+      clearBtn.textContent = 'Clear now…'
+      clearBtn.disabled = false
+    }, 2000)
+  })
+
+  // ── Download location picker ───────────────────────────────────────────────
+  document.getElementById('dl-change-btn').addEventListener('click', async () => {
+    if (!api) return
+    const chosen = await api.chooseDownloadLocation()
+    if (chosen) {
+      document.getElementById('dl-path-display').textContent = chosen
+    }
   })
 </script>
 </body>

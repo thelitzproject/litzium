@@ -6,11 +6,21 @@
 const clockEl = document.getElementById('nt-clock')
 const dateEl  = document.getElementById('nt-date')
 
+let clockFormat = '24h'
+
 function updateClock() {
-  const now  = new Date()
-  const h    = String(now.getHours()).padStart(2, '0')
-  const m    = String(now.getMinutes()).padStart(2, '0')
-  clockEl.textContent = `${h}:${m}`
+  const now = new Date()
+  const m   = String(now.getMinutes()).padStart(2, '0')
+  let timeStr
+  if (clockFormat === '12h') {
+    let h    = now.getHours()
+    const ap = h >= 12 ? ' PM' : ' AM'
+    h        = h % 12 || 12
+    timeStr  = `${String(h).padStart(2, '0')}:${m}${ap}`
+  } else {
+    timeStr = `${String(now.getHours()).padStart(2, '0')}:${m}`
+  }
+  clockEl.textContent = timeStr
 
   const opts = { weekday: 'long', month: 'long', day: 'numeric' }
   dateEl.textContent = now.toLocaleDateString(undefined, opts)
@@ -141,6 +151,7 @@ if (api) {
   ntInput.addEventListener('blur', () => setTimeout(ntHideDropdown, 120))
 }
 
+// ─── Shortcuts ────────────────────────────────────────────────────────────────
 
 const DEFAULT_SHORTCUTS = [
   { label: 'Google',    url: 'https://google.com',    icon: 'G' },
@@ -151,23 +162,112 @@ const DEFAULT_SHORTCUTS = [
   { label: 'Twitter',   url: 'https://x.com',         icon: 'X' },
 ]
 
-function renderShortcuts(shortcuts) {
+let shortcuts = DEFAULT_SHORTCUTS.slice()
+
+function saveShortcuts() {
+  if (api) api.setSetting('ntShortcuts', shortcuts)
+}
+
+function renderShortcuts() {
   const container = document.getElementById('nt-shortcuts')
   container.innerHTML = ''
 
-  shortcuts.forEach(s => {
+  shortcuts.forEach((s, idx) => {
     const a = document.createElement('a')
-    a.href  = s.url
+    a.href      = s.url
     a.className = 'nt-shortcut'
     a.innerHTML = `
       <div class="nt-shortcut-icon">${escHtml(s.icon)}</div>
-      <span class="nt-shortcut-label">${escHtml(s.label)}</span>`
+      <span class="nt-shortcut-label">${escHtml(s.label)}</span>
+      <button class="nt-shortcut-remove" aria-label="Remove shortcut" tabindex="-1">×</button>`
+
+    a.querySelector('.nt-shortcut-remove').addEventListener('click', e => {
+      e.preventDefault()
+      e.stopPropagation()
+      shortcuts.splice(idx, 1)
+      saveShortcuts()
+      renderShortcuts()
+    })
+
     container.appendChild(a)
   })
+
+  // "+" add tile
+  const addTile = document.createElement('div')
+  addTile.className = 'nt-shortcut nt-shortcut-add'
+  addTile.setAttribute('role', 'button')
+  addTile.setAttribute('tabindex', '0')
+  addTile.innerHTML = `
+    <div class="nt-shortcut-icon">+</div>
+    <span class="nt-shortcut-label">Add</span>`
+  addTile.addEventListener('click', openAddModal)
+  addTile.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAddModal() } })
+  container.appendChild(addTile)
 }
 
-renderShortcuts(DEFAULT_SHORTCUTS)
+// ─── Add shortcut modal ───────────────────────────────────────────────────────
 
+const modalOverlay = document.createElement('div')
+modalOverlay.className = 'nt-modal-overlay'
+modalOverlay.hidden = true
+modalOverlay.innerHTML = `
+  <div class="nt-modal">
+    <div class="nt-modal-title">Add Shortcut</div>
+    <div class="nt-modal-field">
+      <label class="nt-modal-label" for="nt-modal-url">URL</label>
+      <input class="nt-modal-input" id="nt-modal-url" type="text" placeholder="https://example.com" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="nt-modal-field">
+      <label class="nt-modal-label" for="nt-modal-name">Label</label>
+      <input class="nt-modal-input" id="nt-modal-name" type="text" placeholder="Site name" autocomplete="off">
+    </div>
+    <div class="nt-modal-actions">
+      <button class="nt-modal-btn" id="nt-modal-cancel">Cancel</button>
+      <button class="nt-modal-btn primary" id="nt-modal-add">Add</button>
+    </div>
+  </div>`
+document.body.appendChild(modalOverlay)
+
+const modalUrlInput  = document.getElementById('nt-modal-url')
+const modalNameInput = document.getElementById('nt-modal-name')
+
+function openAddModal() {
+  modalUrlInput.value  = ''
+  modalNameInput.value = ''
+  modalOverlay.hidden  = false
+  modalUrlInput.focus()
+}
+
+function closeAddModal() {
+  modalOverlay.hidden = true
+}
+
+function commitAdd() {
+  let url   = modalUrlInput.value.trim()
+  const name = modalNameInput.value.trim()
+  if (!url) return
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url
+  const hostname = (() => { try { return new URL(url).hostname.replace(/^www\./, '') } catch { return url } })()
+  const icon  = (name || hostname).charAt(0).toUpperCase()
+  shortcuts.push({ label: name || hostname, url, icon })
+  saveShortcuts()
+  renderShortcuts()
+  closeAddModal()
+}
+
+document.getElementById('nt-modal-cancel').addEventListener('click', closeAddModal)
+document.getElementById('nt-modal-add').addEventListener('click', commitAdd)
+modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeAddModal() })
+modalUrlInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter')  { e.preventDefault(); modalNameInput.focus() }
+  if (e.key === 'Escape') closeAddModal()
+})
+modalNameInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter')  { e.preventDefault(); commitAdd() }
+  if (e.key === 'Escape') closeAddModal()
+})
+
+// ─── Utility ──────────────────────────────────────────────────────────────────
 
 function escHtml(str) {
   return String(str)
@@ -244,4 +344,18 @@ function renderSpeedDial(sites) {
   wrap.hidden = false
 }
 
-loadSpeedDial()
+// ─── Init ─────────────────────────────────────────────────────────────────────
+;(async () => {
+  if (api) {
+    const s = await api.getSettings()
+    if (s.clockFormat) {
+      clockFormat = s.clockFormat
+      updateClock()
+    }
+    if (Array.isArray(s.ntShortcuts) && s.ntShortcuts.length) {
+      shortcuts = s.ntShortcuts
+    }
+  }
+  renderShortcuts()
+  loadSpeedDial()
+})()
