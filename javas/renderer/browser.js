@@ -377,6 +377,7 @@ function openSidebarPanel() {
   sidebarBtn.setAttribute('aria-pressed', 'true')
   window.litzium.openSidebar()
   loadSidebarPanel(sidebarActivePanel)
+  setTimeout(() => sidebarSearch.focus(), 50)
 }
 
 function closeSidebarPanel() {

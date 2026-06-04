@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session, nativeTheme } = require('electron')
+const { app, BrowserWindow, ipcMain, session, nativeTheme, dialog } = require('electron')
 const path = require('path')
 const IPC = require('../../dbus/ipc')
 const { createTabManager } = require('./tab-manager')
@@ -177,6 +177,27 @@ function setupIPC() {
   // ── Sidebar ────────────────────────────────────────────────────────────────
   ipcMain.on(IPC.SIDEBAR_OPEN,  event => getManager(event)?.setSidebarOpen(true))
   ipcMain.on(IPC.SIDEBAR_CLOSE, event => getManager(event)?.setSidebarOpen(false))
+
+  // ── Browsing data / download location ─────────────────────────────────────
+  ipcMain.handle(IPC.CLEAR_BROWSING_DATA, async () => {
+    await session.defaultSession.clearStorageData()
+    history.clear()
+    return true
+  })
+
+  ipcMain.handle(IPC.DOWNLOAD_LOCATION_CHOOSE, async event => {
+    const bw = BrowserWindow.fromWebContents(event.sender)
+    const current = settings.get('downloadLocation') || app.getPath('downloads')
+    const result  = await dialog.showOpenDialog(bw, {
+      title: 'Choose Download Location',
+      defaultPath: current,
+      properties: ['openDirectory'],
+    })
+    if (result.canceled || !result.filePaths.length) return null
+    const chosen = result.filePaths[0]
+    settings.set('downloadLocation', chosen)
+    return chosen
+  })
 
   // ── Print ───────────────────────────────────────────────────────────────────
   ipcMain.on(IPC.PRINT, async event => {

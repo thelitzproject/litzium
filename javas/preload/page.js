@@ -49,6 +49,10 @@ contextBridge.exposeInMainWorld('litzPagesAPI', {
   getSettings:  ()            => ipcRenderer.invoke(IPC.SETTINGS_GET_ALL),
   setSetting:   (key, value)  => ipcRenderer.send(IPC.SETTINGS_SET, { key, value }),
 
+  // ── Browsing data / download location ──────────────────────────────
+  clearBrowsingData:      () => ipcRenderer.invoke(IPC.CLEAR_BROWSING_DATA),
+  chooseDownloadLocation: () => ipcRenderer.invoke(IPC.DOWNLOAD_LOCATION_CHOOSE),
+
   // ── Navigation (used by print-preview cancel button) ──────────────
   navigate: (url) => ipcRenderer.send(IPC.NAV_GO, url),
 
