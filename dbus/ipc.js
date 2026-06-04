@@ -70,6 +70,10 @@ const IPC = {
   PRINT_TO_PDF:  'print-to-pdf',   // send — save PDF with dialog
   PRINT_RESULT:  'print-result',   // main→renderer: { success, filePath? }
 
+  // ── Browsing data / download location ────────────────────────────────────
+  CLEAR_BROWSING_DATA:      'clear-browsing-data',       // invoke → true
+  DOWNLOAD_LOCATION_CHOOSE: 'download-location-choose',  // invoke → path | null
+
   // ── Print preview (litzium://print-preview) ────────────────────────────
   PRINT_PREVIEW_OPEN:     'print-preview-open',     // send — open preview tab for active tab
   PRINT_PREVIEW_GENERATE: 'print-preview-generate', // invoke { opts } → { success, data: base64 }
