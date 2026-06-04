@@ -316,6 +316,129 @@ html, body {
   text-align: center;
 }
 
+/* ─── Editable shortcuts ─────────────────────────────────────────────────── */
+
+.nt-shortcut { position: relative; }
+
+.nt-shortcut-remove {
+  display: none;
+  position: absolute;
+  top: -5px;
+  right: 1px;
+  width: 18px;
+  height: 18px;
+  background: rgba(248, 113, 113, 0.92);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  padding: 0;
+  font-family: var(--font);
+}
+
+.nt-shortcut:hover .nt-shortcut-remove { display: flex; }
+
+.nt-shortcut-add .nt-shortcut-icon {
+  font-size: 28px;
+  font-weight: 300;
+  color: var(--sub);
+}
+
+.nt-shortcut-add:hover .nt-shortcut-icon {
+  color: var(--text);
+  background: rgba(124,131,247,0.15);
+  border-color: rgba(124,131,247,0.4);
+}
+
+/* ─── Add shortcut modal ─────────────────────────────────────────────────── */
+
+.nt-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.nt-modal-overlay[hidden] { display: none; }
+
+.nt-modal {
+  background: rgba(22, 22, 38, 0.97);
+  border: 1.5px solid rgba(124,131,247,0.3);
+  border-radius: 14px;
+  padding: 28px 32px;
+  width: 340px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+}
+
+.nt-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 20px;
+  font-family: var(--font);
+}
+
+.nt-modal-field { margin-bottom: 14px; }
+
+.nt-modal-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sub);
+  margin-bottom: 6px;
+  font-family: var(--font);
+}
+
+.nt-modal-input {
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1.5px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font);
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.nt-modal-input:focus { border-color: rgba(124,131,247,0.6); }
+.nt-modal-input::placeholder { color: var(--sub); }
+
+.nt-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.nt-modal-btn {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.nt-modal-btn:hover { background: rgba(255,255,255,0.1); }
+.nt-modal-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.nt-modal-btn.primary:hover { background: #9ba1f9; }
+
 /* ─── Footer ─────────────────────────────────────────────────────────────── */
 .nt-footer {
   position: fixed;
