@@ -24,6 +24,13 @@ const DEFAULTS = {
   openNewTabsInBackground: false,
   confirmCloseTabs:        true,
   askDownloadLocation:     false,
+  showTabFavicons:         true,
+  blockInsecureContent:    true,
+  doNotTrack:              false,
+  startupBehavior:         'newtab',   // newtab | restore
+  clockFormat:             '24h',      // 24h | 12h
+  downloadLocation:        null,       // null = system default
+  ntShortcuts:             null,       // null = use built-in defaults
 }
 
 let _cache = null
