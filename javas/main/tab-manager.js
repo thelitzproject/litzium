@@ -196,6 +196,15 @@ function createTabManager(win, chromeHeight = 88) {
 
     wc.on('did-navigate', (_, url) => {
       const t = tabs.get(id); if (!t) return
+      // Internal pages load via loadFile() which fires did-navigate with a file:// URL.
+      // Keep the litzium:// URL we already set so the address bar stays clean.
+      if (url.startsWith('file://') && t.url.startsWith('litzium://')) {
+        t.canGoBack    = wc.canGoBack()
+        t.canGoForward = wc.canGoForward()
+        toChrome(IPC.TAB_UPDATED, { id, url: t.url, canGoBack: t.canGoBack, canGoForward: t.canGoForward })
+        if (id === activeId) sendNavState(id)
+        return
+      }
       t.url          = url
       t.canGoBack    = wc.canGoBack()
       t.canGoForward = wc.canGoForward()
@@ -208,6 +217,7 @@ function createTabManager(win, chromeHeight = 88) {
 
     wc.on('did-navigate-in-page', (_, url) => {
       const t = tabs.get(id); if (!t) return
+      if (url.startsWith('file://') && t.url.startsWith('litzium://')) return
       t.url          = url
       t.canGoBack    = wc.canGoBack()
       t.canGoForward = wc.canGoForward()
