@@ -90,6 +90,12 @@ const IPC = {
   // ── Theme ─────────────────────────────────────────────────────────────────
   THEME_APPLY: 'theme-apply',  // main→chrome: string 'dark'|'light'|'system'
 
+  // ── Tab move (drag to reorder) ────────────────────────────────────────────
+  TAB_MOVE: 'tab-move',  // send { tabId, toIndex }
+
+  // ── History search (omnibox inline results) ───────────────────────────────
+  HISTORY_SEARCH: 'history-search',  // invoke { query, limit } → HistoryEntry[]
+
   // ── Reopen last closed tab ────────────────────────────────────────────────
   TAB_REOPEN_LAST: 'tab-reopen-last',  // send
 
