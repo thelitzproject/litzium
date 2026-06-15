@@ -3,6 +3,17 @@
 const tabStore = new Map()   // tabId → { el, data }
 let activeTabId = null
 
+// ─── Tab Groups (renderer-managed, per-session) ───────────────────────────────
+
+const groupMeta   = new Map()   // groupId → { name, color, collapsed }
+const tabGroupMap = new Map()   // tabId → groupId
+let   groupCounter = 0
+const GROUP_COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#6366f1','#a855f7','#ec4899']
+
+// ─── Drag-to-reorder state ────────────────────────────────────────────────────
+
+let dragTabId = null
+
 const $ = id => document.getElementById(id)
 
 const tabsContainer      = $('tabs-container')
@@ -70,6 +81,187 @@ window.litzium.on(window.litzium.channels.WIN_MAXIMIZED, (maximized) => {
   winMaximize.title = maximized ? 'Restore' : 'Maximize'
 })
 
+// ─── Drop indicator (appended to tabsContainer at startup) ───────────────────
+
+const dropIndicator = document.createElement('div')
+dropIndicator.className = 'tab-drop-indicator'
+dropIndicator.hidden = true
+tabsContainer.appendChild(dropIndicator)
+
+// ─── Tab Groups ───────────────────────────────────────────────────────────────
+
+function createGroup(name, color) {
+  const id = `g${++groupCounter}`
+  groupMeta.set(id, { name, color: color || GROUP_COLORS[(groupCounter - 1) % GROUP_COLORS.length], collapsed: false })
+  return id
+}
+
+function assignGroup(tabId, groupId) {
+  tabGroupMap.set(tabId, groupId)
+  rebuildGroupLabels()
+}
+
+function removeFromGroup(tabId) {
+  tabGroupMap.delete(tabId)
+  rebuildGroupLabels()
+}
+
+function toggleGroupCollapse(groupId) {
+  const meta = groupMeta.get(groupId)
+  if (!meta) return
+  meta.collapsed = !meta.collapsed
+  rebuildGroupLabels()
+}
+
+function renameGroup(groupId, labelEl) {
+  const meta = groupMeta.get(groupId)
+  if (!meta) return
+  const span = labelEl.querySelector('.tab-group-name')
+  if (!span) return
+  span.contentEditable = 'true'
+  span.focus()
+  document.execCommand('selectAll', false, null)
+  const done = () => {
+    span.contentEditable = 'false'
+    meta.name = span.textContent.trim() || meta.name
+    span.textContent = meta.name
+  }
+  span.addEventListener('blur', done, { once: true })
+  span.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); span.blur() } }, { once: true })
+}
+
+function deleteGroup(groupId) {
+  for (const [tid, gid] of tabGroupMap) {
+    if (gid === groupId) tabGroupMap.delete(tid)
+  }
+  groupMeta.delete(groupId)
+  rebuildGroupLabels()
+}
+
+function rebuildGroupLabels() {
+  tabsContainer.querySelectorAll('.tab-group-label').forEach(el => el.remove())
+  if (groupMeta.size === 0) {
+    tabStore.forEach(({ el }) => { el.style.removeProperty('--group-color'); el.classList.remove('in-group') })
+    tabStore.forEach(({ el }) => { el.style.display = '' })
+    return
+  }
+
+  const tabEls = [...tabsContainer.querySelectorAll('.tab')]
+  let prevGroupId = null
+
+  tabEls.forEach(tabEl => {
+    const tabId   = tabEl.dataset.tabId
+    const groupId = tabGroupMap.get(tabId)
+
+    if (groupId && groupId !== prevGroupId) {
+      const meta  = groupMeta.get(groupId)
+      if (meta) {
+        const label = document.createElement('div')
+        label.className = 'tab-group-label'
+        label.dataset.groupId = groupId
+        label.style.setProperty('--group-color', meta.color)
+        label.innerHTML = `<span class="tab-group-dot"></span><span class="tab-group-name">${escHtml(meta.name)}</span>`
+        label.querySelector('.tab-group-dot').addEventListener('click', () => toggleGroupCollapse(groupId))
+        label.querySelector('.tab-group-name').addEventListener('click', () => toggleGroupCollapse(groupId))
+        label.addEventListener('contextmenu', e => {
+          e.preventDefault()
+          e.stopPropagation()
+          showGroupCtxMenu(e, groupId, label)
+        })
+        tabsContainer.insertBefore(label, tabEl)
+      }
+    }
+
+    prevGroupId = groupId || null
+
+    if (groupId) {
+      const meta = groupMeta.get(groupId)
+      if (meta) {
+        tabEl.style.setProperty('--group-color', meta.color)
+        tabEl.classList.add('in-group')
+        tabEl.style.display = meta.collapsed ? 'none' : ''
+      }
+    } else {
+      tabEl.style.removeProperty('--group-color')
+      tabEl.classList.remove('in-group')
+      tabEl.style.display = ''
+    }
+  })
+}
+
+function showGroupCtxMenu(e, groupId, labelEl) {
+  hideTabCtxMenu()
+  const items = [
+    { label: 'Rename Group',  action: () => renameGroup(groupId, labelEl) },
+    { label: 'Delete Group',  action: () => deleteGroup(groupId), danger: true },
+  ]
+  items.forEach(item => {
+    const div = document.createElement('div')
+    div.className = 'ctx-item' + (item.danger ? ' danger' : '')
+    div.textContent = item.label
+    div.addEventListener('click', () => { item.action(); hideTabCtxMenu() })
+    tabCtxMenu.appendChild(div)
+  })
+  tabCtxMenu.style.display = 'block'
+  const x = Math.min(e.clientX, window.innerWidth  - 170)
+  const y = Math.min(e.clientY, window.innerHeight - tabCtxMenu.offsetHeight - 8)
+  tabCtxMenu.style.left = x + 'px'
+  tabCtxMenu.style.top  = y + 'px'
+}
+
+// ─── Drag to reorder ──────────────────────────────────────────────────────────
+
+function getDropTarget(clientX) {
+  const els = [...tabsContainer.querySelectorAll('.tab:not(.dragging)')]
+  const cr  = tabsContainer.getBoundingClientRect()
+  for (const t of els) {
+    const r = t.getBoundingClientRect()
+    if (clientX < r.left + r.width / 2) return { before: t, x: r.left - cr.left }
+  }
+  const last = els[els.length - 1]
+  return { before: null, x: last ? last.getBoundingClientRect().right - cr.left : 0 }
+}
+
+function startDrag(tabId, pointerId, clientX) {
+  dragTabId = tabId
+  const entry = tabStore.get(tabId)
+  if (!entry) return
+  entry.el.classList.add('dragging')
+  entry.el.setPointerCapture(pointerId)
+  dropIndicator.hidden = false
+  const { x } = getDropTarget(clientX)
+  dropIndicator.style.left = `${x}px`
+}
+
+function updateDragIndicator(clientX) {
+  const { x } = getDropTarget(clientX)
+  dropIndicator.style.left = `${x}px`
+}
+
+function commitDrag(clientX) {
+  if (!dragTabId) return
+  const entry = tabStore.get(dragTabId)
+  const { before } = getDropTarget(clientX)
+  if (entry) {
+    entry.el.classList.remove('dragging')
+    if (before) tabsContainer.insertBefore(entry.el, before)
+    else         tabsContainer.insertBefore(entry.el, dropIndicator)
+  }
+  dropIndicator.hidden = true
+  const allTabEls = [...tabsContainer.querySelectorAll('.tab')]
+  const toIndex   = allTabEls.indexOf(entry?.el ?? null)
+  if (toIndex >= 0) window.litzium.moveTab(dragTabId, toIndex)
+  dragTabId = null
+  rebuildGroupLabels()
+}
+
+function cancelDrag() {
+  if (!dragTabId) return
+  tabStore.get(dragTabId)?.el.classList.remove('dragging')
+  dropIndicator.hidden = true
+  dragTabId = null
+}
+
 // ─── Tab SVGs ─────────────────────────────────────────────────────────────────
 
 const GLOBE_SVG = `<svg viewBox="0 0 20 20" fill="currentColor">
@@ -111,6 +303,21 @@ function createTabEl(data) {
   el.querySelector('.tab-close').addEventListener('click', e => {
     e.stopPropagation()
     window.litzium.closeTab(data.id)
+  })
+
+  el.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || e.target.closest('.tab-close')) return
+    if (tabStore.get(data.id)?.data.pinned) return
+    startDrag(data.id, e.pointerId, e.clientX)
+  })
+  el.addEventListener('pointermove', e => {
+    if (dragTabId === data.id) updateDragIndicator(e.clientX)
+  })
+  el.addEventListener('pointerup', e => {
+    if (dragTabId === data.id) commitDrag(e.clientX)
+  })
+  el.addEventListener('pointercancel', () => {
+    if (dragTabId === data.id) cancelDrag()
   })
 
   tabStore.set(data.id, { el, data: { ...data } })
@@ -160,9 +367,14 @@ const ch = window.litzium.channels
 window.litzium.on(ch.TAB_CREATED, data => {
   createTabEl(data)
   if (data.isActive) setActiveTab(data.id)
+  rebuildGroupLabels()
 })
 
-window.litzium.on(ch.TAB_CLOSED, ({ id }) => removeTabEl(id))
+window.litzium.on(ch.TAB_CLOSED, ({ id }) => {
+  tabGroupMap.delete(id)
+  removeTabEl(id)
+  rebuildGroupLabels()
+})
 
 window.litzium.on(ch.TAB_UPDATED, data => updateTabEl(data.id, data))
 
@@ -248,13 +460,29 @@ function showTabCtxMenu(e, tabId, isPinned) {
   e.stopPropagation()
   hideTabCtxMenu()
 
+  const currentGroupId = tabGroupMap.get(tabId)
+  const groupItems = []
+
+  if (currentGroupId) {
+    groupItems.push({ label: 'Remove from Group', action: () => removeFromGroup(tabId) })
+  } else {
+    groupItems.push({ label: 'New Group',         action: () => { const gid = createGroup(`Group ${groupCounter + 1}`); assignGroup(tabId, gid) } })
+    if (groupMeta.size > 0) {
+      for (const [gid, meta] of groupMeta) {
+        groupItems.push({ label: `Add to "${meta.name}"`, action: () => assignGroup(tabId, gid) })
+      }
+    }
+  }
+
   const items = [
     { label: isPinned ? 'Unpin Tab' : 'Pin Tab', action: () => isPinned ? window.litzium.unpinTab(tabId) : window.litzium.pinTab(tabId) },
     { sep: true },
-    { label: 'New Tab',        action: () => window.litzium.newTab() },
-    { label: 'Reload Tab',     action: () => window.litzium.reload() },
+    { label: 'New Tab',    action: () => window.litzium.newTab() },
+    { label: 'Reload Tab', action: () => window.litzium.reload() },
     { sep: true },
-    { label: 'Close Tab',      action: () => window.litzium.closeTab(tabId), danger: true },
+    ...groupItems,
+    { sep: true },
+    { label: 'Close Tab',  action: () => window.litzium.closeTab(tabId), danger: true },
   ]
 
   items.forEach(item => {
@@ -641,16 +869,23 @@ function focusOmnibox() {
 
 // ─── Suggestions dropdown ─────────────────────────────────────────────────────
 
+// suggItems entries: { text, url, type: 'history'|'search' }
 let suggItems     = []
 let activeSuggIdx = -1
 let originalInput = ''
 let suggDebounce  = null
 
-const ITEM_H    = 36
-const SUGG_LIMIT = 8
+const ITEM_H       = 36
+const ITEM_H_HIST  = 44
+const SUGG_HIST    = 3   // max history hits
+const SUGG_SEARCH  = 5   // max search hits (total ≤ 8)
 
 const SEARCH_SVG = `<svg class="sugg-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
   <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
+</svg>`
+
+const HISTORY_SVG = `<svg class="sugg-icon sugg-icon-hist" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
 </svg>`
 
 const ARROW_SVG = `<svg class="sugg-arrow" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -677,13 +912,19 @@ function boldMatch(text, query) {
 
 function renderSuggestions(items, query) {
   suggestionsDropdown.innerHTML = ''
-  items.forEach((text, i) => {
+  items.forEach((item, i) => {
     const div = document.createElement('div')
-    div.className = 'sugg-item'
     div.setAttribute('role', 'option')
     div.dataset.idx = i
-    div.innerHTML = `${SEARCH_SVG}<span style="flex:1;overflow:hidden;text-overflow:ellipsis">${boldMatch(text, query)}</span>${ARROW_SVG}`
-    div.addEventListener('mousedown', e => { e.preventDefault(); commitSuggestion(text) })
+    if (item.type === 'history') {
+      div.className = 'sugg-item sugg-item-hist'
+      const shortUrl = item.url.length > 60 ? item.url.slice(0, 60) + '…' : item.url
+      div.innerHTML = `${HISTORY_SVG}<span class="sugg-body"><span class="sugg-title">${boldMatch(item.text, query)}</span><span class="sugg-url">${escHtml(shortUrl)}</span></span>${ARROW_SVG}`
+    } else {
+      div.className = 'sugg-item'
+      div.innerHTML = `${SEARCH_SVG}<span style="flex:1;overflow:hidden;text-overflow:ellipsis">${boldMatch(item.text, query)}</span>${ARROW_SVG}`
+    }
+    div.addEventListener('mousedown', e => { e.preventDefault(); commitSuggestion(item) })
     div.addEventListener('mousemove', () => setActiveIdx(i, false))
     suggestionsDropdown.appendChild(div)
   })
@@ -699,7 +940,7 @@ function setActiveIdx(idx, updateInput = true) {
   }
   const el = suggestionsDropdown.querySelector(`[data-idx="${idx}"]`)
   if (el) el.classList.add('active')
-  if (updateInput) addressBar.value = suggItems[idx]
+  if (updateInput) addressBar.value = suggItems[idx].url || suggItems[idx].text
 }
 
 function showDropdown(items, query) {
@@ -710,7 +951,8 @@ function showDropdown(items, query) {
   renderSuggestions(items, query)
   positionDropdown()
   suggestionsDropdown.hidden = false
-  window.litzium.expandOmnibox(items.length * ITEM_H + 2)
+  const totalH = items.reduce((h, it) => h + (it.type === 'history' ? ITEM_H_HIST : ITEM_H), 2)
+  window.litzium.expandOmnibox(totalH)
 }
 
 function hideDropdown() {
@@ -722,10 +964,11 @@ function hideDropdown() {
   window.litzium.collapseOmnibox()
 }
 
-function commitSuggestion(text) {
-  addressBar.value = text
+function commitSuggestion(item) {
+  const target = item.url || item.text
+  addressBar.value = target
   hideDropdown()
-  window.litzium.navigate(text)
+  window.litzium.navigate(target)
   addressBar.blur()
 }
 
@@ -734,9 +977,22 @@ addressBar.addEventListener('input', () => {
   const q = addressBar.value
   if (!q.trim() || q.startsWith('litzium://')) { hideDropdown(); return }
   suggDebounce = setTimeout(async () => {
-    const { suggestions } = await window.litzium.getSuggestions(q)
+    const [{ suggestions }, histEntries] = await Promise.all([
+      window.litzium.getSuggestions(q),
+      window.litzium.searchHistory(q, SUGG_HIST).catch(() => []),
+    ])
     if (addressBar.value !== q) return
-    showDropdown(suggestions.slice(0, SUGG_LIMIT), q)
+
+    const histItems = (histEntries || []).slice(0, SUGG_HIST).map(e => ({
+      text: e.title || e.url, url: e.url, type: 'history',
+    }))
+    const histUrls  = new Set(histItems.map(h => h.url))
+    const searchItems = suggestions
+      .filter(s => !histUrls.has(s))
+      .slice(0, SUGG_SEARCH)
+      .map(s => ({ text: s, url: null, type: 'search' }))
+
+    showDropdown([...histItems, ...searchItems], q)
   }, 200)
 })
 
@@ -749,7 +1005,7 @@ addressBar.addEventListener('keydown', e => {
   if (!suggestionsDropdown.hidden) {
     if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx(Math.min(activeSuggIdx + 1, suggItems.length - 1)); return }
     if (e.key === 'ArrowUp')   { e.preventDefault(); setActiveIdx(activeSuggIdx <= 0 ? -1 : activeSuggIdx - 1); return }
-    if (e.key === 'Tab')       { e.preventDefault(); if (activeSuggIdx >= 0) { addressBar.value = suggItems[activeSuggIdx]; setActiveIdx(-1, false) }; return }
+    if (e.key === 'Tab')       { e.preventDefault(); if (activeSuggIdx >= 0) { const it = suggItems[activeSuggIdx]; addressBar.value = it.url || it.text; setActiveIdx(-1, false) }; return }
   }
 
   if (e.key === 'Enter') {
