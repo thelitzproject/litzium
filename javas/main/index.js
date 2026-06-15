@@ -115,9 +115,10 @@ function setupIPC() {
   ipcMain.on(IPC.OMNIBOX_COLLAPSE, event                    => getManager(event)?.setOmniboxOpen(false, 0))
 
   // ── History ────────────────────────────────────────────────────────────────
-  ipcMain.handle(IPC.HISTORY_GET,    ()          => history.getAll())
-  ipcMain.handle(IPC.HISTORY_REMOVE, (_, { id }) => { history.remove(id); return true })
-  ipcMain.on(IPC.HISTORY_CLEAR,      ()          => history.clear())
+  ipcMain.handle(IPC.HISTORY_GET,    ()                          => history.getAll())
+  ipcMain.handle(IPC.HISTORY_REMOVE, (_, { id })                => { history.remove(id); return true })
+  ipcMain.on(IPC.HISTORY_CLEAR,      ()                         => history.clear())
+  ipcMain.handle(IPC.HISTORY_SEARCH, (_, { query, limit = 6 } = {}) => history.search(query, limit))
 
   // ── Bookmarks ──────────────────────────────────────────────────────────────
   ipcMain.handle(IPC.BOOKMARK_GET_ALL, () => bookmarks.getAll())
@@ -162,6 +163,9 @@ function setupIPC() {
   // ── Pinned tabs ────────────────────────────────────────────────────────────
   ipcMain.on(IPC.TAB_PIN,   (event, { tabId }) => getManager(event)?.pinTab(tabId))
   ipcMain.on(IPC.TAB_UNPIN, (event, { tabId }) => getManager(event)?.unpinTab(tabId))
+
+  // ── Tab move (drag to reorder) ─────────────────────────────────────────────
+  ipcMain.on(IPC.TAB_MOVE, (event, { tabId, toIndex } = {}) => getManager(event)?.moveTab(tabId, toIndex))
 
   // ── Reopen last closed tab ─────────────────────────────────────────────────
   ipcMain.on(IPC.TAB_REOPEN_LAST, event => getManager(event)?.reopenLastClosed())

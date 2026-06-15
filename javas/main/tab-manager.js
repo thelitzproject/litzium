@@ -459,6 +459,20 @@ function createTabManager(win, chromeHeight = 88) {
     toChrome(IPC.ZOOM_CHANGED, { tabId: activeId, zoomFactor: 1 })
   }
 
+  // ── Move tab (drag to reorder) ────────────────────────────────────────────
+
+  function moveTab(tabId, toIndex) {
+    if (!tabs.has(tabId)) return
+    const entries = Array.from(tabs.entries())
+    const from = entries.findIndex(([id]) => id === tabId)
+    if (from < 0) return
+    const [removed] = entries.splice(from, 1)
+    const clamp = Math.max(0, Math.min(toIndex, entries.length))
+    entries.splice(clamp, 0, removed)
+    tabs.clear()
+    entries.forEach(([id, tab]) => tabs.set(id, tab))
+  }
+
   // ── Pinned tabs ───────────────────────────────────────────────────────────
 
   function pinTab(id) {
@@ -540,6 +554,7 @@ function createTabManager(win, chromeHeight = 88) {
     resetZoom, setSearchEngine,
     getActiveWebContents,
     openPrintPreview, getPrintPreviewTarget,
+    moveTab,
     pinTab, unpinTab,
     reopenLastClosed,
     saveSession, loadSession, clearSession, restoreSession,

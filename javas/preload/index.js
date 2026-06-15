@@ -33,14 +33,15 @@ contextBridge.exposeInMainWorld('litzium', {
   closeWindow:    () => ipcRenderer.send(IPC.WIN_CLOSE),
 
   // ── Tabs ─────────────────────────────────────────────────────────────
-  newTab:         (url)   => ipcRenderer.send(IPC.TAB_NEW,         url),
-  closeTab:       (tabId) => ipcRenderer.send(IPC.TAB_CLOSE,       tabId),
-  switchTab:      (tabId) => ipcRenderer.send(IPC.TAB_SWITCH,      tabId),
-  pinTab:         (tabId) => ipcRenderer.send(IPC.TAB_PIN,         { tabId }),
-  unpinTab:       (tabId) => ipcRenderer.send(IPC.TAB_UNPIN,       { tabId }),
-  reopenLastTab:  ()      => ipcRenderer.send(IPC.TAB_REOPEN_LAST),
-  restoreSession: ()      => ipcRenderer.send(IPC.SESSION_RESTORE),
-  dismissSession: ()      => ipcRenderer.send(IPC.SESSION_DISMISS),
+  newTab:         (url)              => ipcRenderer.send(IPC.TAB_NEW,    url),
+  closeTab:       (tabId)            => ipcRenderer.send(IPC.TAB_CLOSE,  tabId),
+  switchTab:      (tabId)            => ipcRenderer.send(IPC.TAB_SWITCH, tabId),
+  moveTab:        (tabId, toIndex)   => ipcRenderer.send(IPC.TAB_MOVE,   { tabId, toIndex }),
+  pinTab:         (tabId)            => ipcRenderer.send(IPC.TAB_PIN,    { tabId }),
+  unpinTab:       (tabId)            => ipcRenderer.send(IPC.TAB_UNPIN,  { tabId }),
+  reopenLastTab:  ()                 => ipcRenderer.send(IPC.TAB_REOPEN_LAST),
+  restoreSession: ()                 => ipcRenderer.send(IPC.SESSION_RESTORE),
+  dismissSession: ()                 => ipcRenderer.send(IPC.SESSION_DISMISS),
 
   // ── Navigation ───────────────────────────────────────────────────────
   navigate:    (url) => ipcRenderer.send(IPC.NAV_GO,      url),
@@ -90,9 +91,10 @@ contextBridge.exposeInMainWorld('litzium', {
   // ── Multi-window ──────────────────────────────────────────────────────
   newWindow: () => ipcRenderer.send(IPC.WIN_NEW),
 
-  // ── Data (sidebar) ────────────────────────────────────────────────────
-  getBookmarks: () => ipcRenderer.invoke(IPC.BOOKMARK_GET_ALL),
-  getHistory:   () => ipcRenderer.invoke(IPC.HISTORY_GET),
+  // ── Data (sidebar + omnibox) ──────────────────────────────────────────
+  getBookmarks:  ()               => ipcRenderer.invoke(IPC.BOOKMARK_GET_ALL),
+  getHistory:    ()               => ipcRenderer.invoke(IPC.HISTORY_GET),
+  searchHistory: (query, limit)   => ipcRenderer.invoke(IPC.HISTORY_SEARCH, { query, limit }),
 
   // ── IPC event subscription ───────────────────────────────────────────
   /**
