@@ -12,7 +12,12 @@ const GROUP_COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#6366f1
 
 // ─── Drag-to-reorder state ────────────────────────────────────────────────────
 
-let dragTabId = null
+let dragTabId        = null   // actively dragging
+let pendingDragTabId = null   // pointerdown held, not yet past threshold
+let pendingPointerId = null
+let dragStartX       = 0
+let dragStartY       = 0
+const DRAG_THRESHOLD = 5      // pixels before a press becomes a drag
 
 const $ = id => document.getElementById(id)
 
@@ -308,15 +313,27 @@ function createTabEl(data) {
   el.addEventListener('pointerdown', e => {
     if (e.button !== 0 || e.target.closest('.tab-close')) return
     if (tabStore.get(data.id)?.data.pinned) return
-    startDrag(data.id, e.pointerId, e.clientX)
+    pendingDragTabId = data.id
+    pendingPointerId = e.pointerId
+    dragStartX = e.clientX
+    dragStartY = e.clientY
   })
   el.addEventListener('pointermove', e => {
-    if (dragTabId === data.id) updateDragIndicator(e.clientX)
+    if (dragTabId === data.id) {
+      updateDragIndicator(e.clientX)
+    } else if (pendingDragTabId === data.id) {
+      if (Math.abs(e.clientX - dragStartX) > DRAG_THRESHOLD || Math.abs(e.clientY - dragStartY) > DRAG_THRESHOLD) {
+        pendingDragTabId = null
+        startDrag(data.id, pendingPointerId, e.clientX)
+      }
+    }
   })
   el.addEventListener('pointerup', e => {
+    if (pendingDragTabId === data.id) pendingDragTabId = null
     if (dragTabId === data.id) commitDrag(e.clientX)
   })
   el.addEventListener('pointercancel', () => {
+    if (pendingDragTabId === data.id) pendingDragTabId = null
     if (dragTabId === data.id) cancelDrag()
   })
 
