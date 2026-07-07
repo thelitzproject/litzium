@@ -1,0 +1,16 @@
+/**
+ * tux/style.css
+ * Linux-specific chrome overrides.
+ * Linked from pages/browser.html; scoped to [data-platform="linux"].
+ */
+
+/* Prefer system GTK/Noto fonts on Linux */
+[data-platform="linux"] {
+  --font-ui: 'Noto Sans', 'DejaVu Sans', system-ui, sans-serif;
+  --mono: 'Noto Mono', 'DejaVu Sans Mono', 'Courier New', monospace;
+}
+
+/* Linux GTK window decorations can make the frame border look double; remove radius */
+[data-platform="linux"] #browser-chrome {
+  border-radius: 0;
+}
