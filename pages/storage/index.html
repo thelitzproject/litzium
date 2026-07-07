@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Storage — Litzium</title>
+  <link rel="stylesheet" href="../../theming/internal.css">
+  <style>
+    .stor-tabs { display: flex; gap: 2px; margin-bottom: 16px; }
+    .stor-tab {
+      padding: 6px 14px;
+      font-size: 13px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--sub);
+      background: transparent;
+      border: none;
+    }
+    .stor-tab.active { background: var(--surface2); color: var(--text); }
+    .stor-tab:hover:not(.active) { color: var(--text); }
+    .stor-panel { display: none; }
+    .stor-panel.active { display: block; }
+    .stor-table { width: 100%; border-collapse: collapse; }
+    .stor-table th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--sub);
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 500;
+    }
+    .stor-table td {
+      padding: 9px 12px;
+      font-size: 12px;
+      font-family: var(--mono, monospace);
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      word-break: break-all;
+    }
+    .stor-table tr:last-child td { border-bottom: none; }
+    .stor-table tr:hover td { background: var(--surface2); }
+    .stor-key { color: var(--accent); font-weight: 500; }
+    .stor-val { max-width: 400px; color: var(--sub); }
+    .stor-empty { text-align: center; padding: 40px; color: var(--sub); font-size: 13px; }
+    .stor-info { font-size: 12px; color: var(--sub); margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+<div class="ip-page">
+
+  <div class="ip-breadcrumb">
+    <a href="litzium://litz-urls">litzium URLs</a>
+    <span class="sep">›</span>
+    <span>Storage</span>
+  </div>
+
+  <div class="ip-section-title" style="font-size:22px;font-weight:700;margin-bottom:6px;">Storage</div>
+  <div class="stor-info" id="stor-info">Showing storage for the active tab.</div>
+
+  <div class="stor-tabs">
+    <button class="stor-tab active" data-panel="local">localStorage</button>
+    <button class="stor-tab" data-panel="session">sessionStorage</button>
+    <button class="stor-tab" data-panel="cookies">Cookies</button>
+  </div>
+
+  <div class="ip-card" style="padding:0;overflow:hidden;">
+    <div class="stor-panel active" id="panel-local">
+      <div class="stor-empty" id="local-placeholder">Loading…</div>
+    </div>
+    <div class="stor-panel" id="panel-session">
+      <div class="stor-empty" id="session-placeholder">Loading…</div>
+    </div>
+    <div class="stor-panel" id="panel-cookies">
+      <div class="stor-empty" id="cookies-placeholder">Loading…</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const api = window.litzPagesAPI
+
+document.querySelectorAll('.stor-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.stor-tab, .stor-panel').forEach(el => el.classList.remove('active'))
+    btn.classList.add('active')
+    document.getElementById('panel-' + btn.dataset.panel).classList.add('active')
+  })
+})
+
+function renderKV(containerId, placeholderId, items, keyField = 'k', valField = 'v') {
+  const container = document.getElementById(containerId)
+  const ph = document.getElementById(placeholderId)
+  if (!items || !items.length) {
+    ph.style.display = ''
+    ph.textContent = 'No data'
+    const existing = container.querySelector('table')
+    if (existing) existing.remove()
+    return
+  }
+  ph.style.display = 'none'
+  let table = container.querySelector('table')
+  if (!table) {
+    table = document.createElement('table')
+    table.className = 'stor-table'
+    table.innerHTML = '<thead><tr><th>Key</th><th>Value</th></tr></thead><tbody></tbody>'
+    container.appendChild(table)
+  }
+  table.querySelector('tbody').innerHTML = items.map(item =>
+    `<tr><td class="stor-key">${escHtml(String(item[keyField]))}</td><td class="stor-val">${escHtml(String(item[valField]).slice(0, 512))}</td></tr>`
+  ).join('')
+}
+
+function renderCookies(cookies) {
+  const container = document.getElementById('panel-cookies')
+  const ph = document.getElementById('cookies-placeholder')
+  if (!cookies || !cookies.length) {
+    ph.style.display = ''
+    ph.textContent = 'No cookies'
+    const existing = container.querySelector('table')
+    if (existing) existing.remove()
+    return
+  }
+  ph.style.display = 'none'
+  let table = container.querySelector('table')
+  if (!table) {
+    table = document.createElement('table')
+    table.className = 'stor-table'
+    table.innerHTML = '<thead><tr><th>Name</th><th>Domain</th><th>Value</th><th>Expires</th></tr></thead><tbody></tbody>'
+    container.appendChild(table)
+  }
+  table.querySelector('tbody').innerHTML = cookies.map(c =>
+    `<tr>
+      <td class="stor-key">${escHtml(c.name)}</td>
+      <td>${escHtml(c.domain || '')}</td>
+      <td class="stor-val">${escHtml((c.value || '').slice(0, 80))}</td>
+      <td>${c.expirationDate ? new Date(c.expirationDate * 1000).toLocaleDateString() : 'Session'}</td>
+    </tr>`
+  ).join('')
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+}
+
+async function load() {
+  const data = await api.getStorageData().catch(() => null)
+  if (!data) {
+    ['local', 'session'].forEach(t => {
+      document.getElementById(`${t}-placeholder`).textContent = 'Unable to read storage from active tab.'
+    })
+    document.getElementById('cookies-placeholder').textContent = 'Unable to read cookies.'
+    return
+  }
+  if (data.url) document.getElementById('stor-info').textContent = `Showing storage for: ${data.url}`
+  renderKV('panel-local',   'local-placeholder',   data.localStorage   || [])
+  renderKV('panel-session', 'session-placeholder', data.sessionStorage || [])
+  renderCookies(data.cookies || [])
+}
+
+load()
+</script>
+</body>
+</html>

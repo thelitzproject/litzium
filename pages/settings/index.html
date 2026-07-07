@@ -74,6 +74,12 @@
     }
 
     select.ip-select:focus { border-color: var(--accent); }
+
+    .accent-swatch {
+      width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent;
+      cursor: pointer; flex-shrink: 0; transition: transform 0.1s;
+    }
+    .accent-swatch:hover { transform: scale(1.15); }
   </style>
 </head>
 <body>
@@ -174,6 +180,34 @@
               <option value="light">Light</option>
               <option value="system">Follow system</option>
             </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ip-section">
+      <div class="ip-section-title">Accent Color</div>
+      <div class="ip-card">
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Browser accent color</div>
+            <div class="setting-desc">Applied to highlights, active tabs, and interactive elements</div>
+          </div>
+          <div class="setting-control" style="flex-direction:column;gap:8px;align-items:flex-start;">
+            <div id="accent-swatches" style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="accent-swatch" data-color="" style="background:linear-gradient(135deg,#7c83f7,#a855f7)" title="Default"></button>
+              <button class="accent-swatch" data-color="#ef4444" style="background:#ef4444" title="Red"></button>
+              <button class="accent-swatch" data-color="#f97316" style="background:#f97316" title="Orange"></button>
+              <button class="accent-swatch" data-color="#eab308" style="background:#eab308" title="Yellow"></button>
+              <button class="accent-swatch" data-color="#22c55e" style="background:#22c55e" title="Green"></button>
+              <button class="accent-swatch" data-color="#06b6d4" style="background:#06b6d4" title="Cyan"></button>
+              <button class="accent-swatch" data-color="#3b82f6" style="background:#3b82f6" title="Blue"></button>
+              <button class="accent-swatch" data-color="#a855f7" style="background:#a855f7" title="Purple"></button>
+              <button class="accent-swatch" data-color="#ec4899" style="background:#ec4899" title="Pink"></button>
+            </div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);">
+              Custom: <input type="color" id="accent-custom" value="#7c83f7" style="width:32px;height:24px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:transparent;">
+            </label>
           </div>
         </div>
       </div>
@@ -410,6 +444,36 @@
       document.getElementById('dl-path-display').textContent = chosen
     }
   })
+
+  // ── Accent color swatches ──────────────────────────────────────────────────
+  ;(async function initAccent() {
+    if (!api) return
+    const s = await api.getSettings()
+    const current = s.accentColor || ''
+    markAccentSwatch(current)
+    const custom = document.getElementById('accent-custom')
+    if (current) custom.value = current
+
+    document.getElementById('accent-swatches').addEventListener('click', e => {
+      const btn = e.target.closest('.accent-swatch')
+      if (!btn) return
+      const color = btn.dataset.color || null
+      api.setSetting('accentColor', color)
+      markAccentSwatch(btn.dataset.color)
+    })
+
+    custom.addEventListener('input', e => {
+      api.setSetting('accentColor', e.target.value)
+      markAccentSwatch(e.target.value)
+    })
+
+    function markAccentSwatch(color) {
+      document.querySelectorAll('.accent-swatch').forEach(el => {
+        el.style.outline = (el.dataset.color === (color || '')) ? '2px solid #fff' : ''
+        el.style.outlineOffset = '2px'
+      })
+    }
+  })()
 </script>
 </body>
 </html>

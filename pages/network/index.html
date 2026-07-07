@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network — Litzium</title>
+  <link rel="stylesheet" href="../../theming/internal.css">
+  <style>
+    .net-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .net-toolbar input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 8px 12px;
+      font-size: 13px;
+      outline: none;
+    }
+    .net-toolbar input:focus { border-color: var(--accent); }
+    .filter-group { display: flex; gap: 4px; }
+    .filter-btn {
+      padding: 5px 10px;
+      font-size: 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--sub);
+    }
+    .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .net-table { width: 100%; border-collapse: collapse; }
+    .net-table th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--sub);
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 500;
+      position: sticky; top: 0;
+      background: var(--surface);
+    }
+    .net-table td {
+      padding: 7px 12px;
+      font-size: 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono, monospace);
+    }
+    .net-table tr:last-child td { border-bottom: none; }
+    .net-table tr:hover td { background: var(--surface2); cursor: pointer; }
+    .net-url { max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .status-2 { color: #22c55e; }
+    .status-3 { color: #06b6d4; }
+    .status-4 { color: #f97316; }
+    .status-5 { color: #ef4444; }
+    .method-badge {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .method-GET    { background: #22c55e22; color: #22c55e; }
+    .method-POST   { background: #6366f122; color: #6366f1; }
+    .method-PUT    { background: #f9731622; color: #f97316; }
+    .method-DELETE { background: #ef444422; color: #ef4444; }
+    .method-OTHER  { background: var(--surface2); color: var(--sub); }
+    .net-empty { text-align: center; padding: 60px; color: var(--sub); font-size: 14px; }
+    .net-empty svg { width: 40px; height: 40px; opacity: 0.3; margin-bottom: 12px; display: block; margin-inline: auto; }
+    .record-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #ef4444; display: inline-block;
+      animation: pulse 1s ease-in-out infinite;
+    }
+    .record-dot.paused { animation: none; background: var(--sub); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .net-stats {
+      display: flex;
+      gap: 20px;
+      font-size: 12px;
+      color: var(--sub);
+      margin-bottom: 12px;
+    }
+    .net-stats span { font-weight: 500; color: var(--text); }
+  </style>
+</head>
+<body>
+<div class="ip-page">
+
+  <div class="ip-breadcrumb">
+    <a href="litzium://litz-urls">litzium URLs</a>
+    <span class="sep">›</span>
+    <span>Network</span>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <div class="ip-section-title" style="font-size:22px;font-weight:700;">Network</div>
+    <div class="record-dot" id="record-dot"></div>
+    <button class="ip-btn" id="toggle-btn" style="margin-left:auto;">Pause</button>
+    <button class="ip-btn" id="clear-btn">Clear</button>
+  </div>
+
+  <div class="net-stats">
+    <div><span id="stat-count">0</span> requests</div>
+    <div><span id="stat-size">0 B</span> transferred</div>
+    <div><span id="stat-time">0 ms</span> load time</div>
+  </div>
+
+  <div class="net-toolbar">
+    <input id="net-filter" type="text" placeholder="Filter by URL…" autocomplete="off" spellcheck="false">
+    <div class="filter-group">
+      <button class="filter-btn active" data-type="all">All</button>
+      <button class="filter-btn" data-type="XHR">Fetch</button>
+      <button class="filter-btn" data-type="Script">JS</button>
+      <button class="filter-btn" data-type="Stylesheet">CSS</button>
+      <button class="filter-btn" data-type="Image">Img</button>
+    </div>
+  </div>
+
+  <div class="ip-card" style="padding:0;overflow:hidden;overflow-y:auto;max-height:500px;">
+    <table class="net-table">
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>Status</th>
+          <th>URL</th>
+          <th>Type</th>
+          <th>Size</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody id="net-tbody">
+        <tr><td colspan="6">
+          <div class="net-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+            Navigate somewhere to capture network requests
+          </div>
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+const api = window.litzPagesAPI
+
+let requests = []
+let paused   = false
+let filterType = 'all'
+let filterText = ''
+
+function formatSize(bytes) {
+  if (!bytes) return '—'
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / 1048576).toFixed(2) + ' MB'
+}
+
+function render() {
+  let list = requests
+  if (filterType !== 'all') list = list.filter(r => r.resourceType === filterType)
+  if (filterText) list = list.filter(r => r.url.toLowerCase().includes(filterText))
+
+  document.getElementById('stat-count').textContent = list.length
+  const totalSize = list.reduce((s, r) => s + (r.size || 0), 0)
+  document.getElementById('stat-size').textContent = formatSize(totalSize)
+
+  const tbody = document.getElementById('net-tbody')
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="net-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+      ${requests.length ? 'No matching requests' : 'Navigate somewhere to capture network requests'}
+    </div></td></tr>`
+    return
+  }
+  tbody.innerHTML = list.map(r => {
+    const sc  = String(r.statusCode || '')
+    const cls = sc ? `status-${sc[0]}` : ''
+    const mc  = `method-${['GET','POST','PUT','DELETE'].includes(r.method) ? r.method : 'OTHER'}`
+    return `<tr>
+      <td><span class="method-badge ${mc}">${r.method || '?'}</span></td>
+      <td class="${cls}">${r.statusCode || '—'}</td>
+      <td class="net-url" title="${r.url}">${r.url}</td>
+      <td>${r.resourceType || '—'}</td>
+      <td>${formatSize(r.size)}</td>
+      <td>${r.duration ? r.duration + ' ms' : '—'}</td>
+    </tr>`
+  }).join('')
+}
+
+document.getElementById('toggle-btn').addEventListener('click', () => {
+  paused = !paused
+  document.getElementById('toggle-btn').textContent = paused ? 'Record' : 'Pause'
+  document.getElementById('record-dot').classList.toggle('paused', paused)
+})
+
+document.getElementById('clear-btn').addEventListener('click', () => { requests = []; render() })
+
+document.getElementById('net-filter').addEventListener('input', e => {
+  filterText = e.target.value.toLowerCase()
+  render()
+})
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'))
+    btn.classList.add('active')
+    filterType = btn.dataset.type
+    render()
+  })
+})
+
+const off = api.on(api.channels.NETWORK_REQUEST, req => {
+  if (paused) return
+  requests.push(req)
+  render()
+})
+
+window.addEventListener('unload', off)
+render()
+</script>
+</body>
+</html>

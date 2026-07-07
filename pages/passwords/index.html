@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Passwords — Litzium</title>
+  <link rel="stylesheet" href="../../theming/internal.css">
+  <style>
+    .pw-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .pw-toolbar input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 8px 12px;
+      font-size: 13px;
+      outline: none;
+    }
+    .pw-toolbar input:focus { border-color: var(--accent); }
+    .pw-empty {
+      text-align: center;
+      padding: 60px 0;
+      color: var(--sub);
+      font-size: 14px;
+    }
+    .pw-empty svg { width: 40px; height: 40px; opacity: 0.3; margin-bottom: 12px; display: block; margin-inline: auto; }
+    .pw-entry {
+      display: grid;
+      grid-template-columns: auto 1fr 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .pw-entry:last-child { border-bottom: none; }
+    .pw-favicon {
+      width: 20px; height: 20px; border-radius: 4px;
+      background: var(--surface2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; color: var(--sub); overflow: hidden; flex-shrink: 0;
+    }
+    .pw-favicon img { width: 16px; height: 16px; }
+    .pw-domain { font-size: 13px; font-weight: 500; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pw-user   { font-size: 13px; color: var(--sub); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pw-actions { display: flex; gap: 6px; }
+    .pw-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 5px 10px; font-size: 12px; cursor: pointer; }
+    .pw-btn:hover { background: var(--surface3, #2d2d44); }
+    .pw-btn.danger:hover { background: #ef44441a; border-color: #ef4444; color: #ef4444; }
+
+    /* Add form */
+    #add-form {
+      display: none;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      gap: 12px;
+      flex-direction: column;
+    }
+    #add-form.open { display: flex; }
+    .form-row { display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: 10px; }
+    .form-row label { font-size: 12px; color: var(--sub); text-align: right; }
+    .form-row input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 7px 10px;
+      font-size: 13px;
+      outline: none;
+    }
+    .form-row input:focus { border-color: var(--accent); }
+    .form-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+<div class="ip-page">
+
+  <div class="ip-breadcrumb">
+    <a href="litzium://litz-urls">litzium URLs</a>
+    <span class="sep">›</span>
+    <span>Passwords</span>
+  </div>
+
+  <div class="ip-section-title" style="font-size:22px;font-weight:700;margin-bottom:6px;">Passwords</div>
+  <div style="color:var(--sub);font-size:13px;margin-bottom:24px;">Saved passwords are encrypted at rest using AES-256-GCM.</div>
+
+  <div class="pw-toolbar">
+    <input id="pw-search" type="text" placeholder="Search passwords…" autocomplete="off" spellcheck="false">
+    <button class="ip-btn" id="add-btn">+ Add</button>
+  </div>
+
+  <div id="add-form">
+    <div class="form-row"><label>Domain</label><input id="f-domain" type="text" placeholder="example.com" autocomplete="off"></div>
+    <div class="form-row"><label>Username</label><input id="f-username" type="text" placeholder="email or username" autocomplete="off"></div>
+    <div class="form-row"><label>Password</label><input id="f-password" type="password" placeholder="••••••••" autocomplete="new-password"></div>
+    <div class="form-actions">
+      <button class="ip-btn" id="cancel-btn">Cancel</button>
+      <button class="ip-btn primary" id="save-btn">Save</button>
+    </div>
+  </div>
+
+  <div class="ip-card" style="padding:0;overflow:hidden;" id="pw-list-card">
+    <div id="pw-list">
+      <div class="pw-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        No saved passwords
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const api = window.litzPagesAPI
+let allPasswords = []
+
+async function load() {
+  allPasswords = await api.getPasswords()
+  render(allPasswords)
+}
+
+function render(list) {
+  const el = document.getElementById('pw-list')
+  if (!list.length) {
+    el.innerHTML = `<div class="pw-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+      No saved passwords
+    </div>`
+    return
+  }
+  el.innerHTML = list.map(p => `
+    <div class="pw-entry" data-id="${p.id}">
+      <div class="pw-favicon">
+        <img src="https://www.google.com/s2/favicons?sz=16&domain=${encodeURIComponent(p.domain)}" onerror="this.style.display='none'" alt="">
+      </div>
+      <div class="pw-domain" title="${p.domain}">${p.domain}</div>
+      <div class="pw-user" title="${p.username}">${p.username}</div>
+      <div class="pw-actions">
+        <button class="pw-btn copy-btn" data-id="${p.id}" title="Copy password">Copy</button>
+        <button class="pw-btn danger del-btn" data-id="${p.id}" title="Delete">Delete</button>
+      </div>
+    </div>
+  `).join('')
+
+  el.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const pw = allPasswords.find(p => p.id === btn.dataset.id)
+      if (!pw) return
+      await navigator.clipboard.writeText(pw.password)
+      btn.textContent = 'Copied!'
+      setTimeout(() => (btn.textContent = 'Copy'), 1500)
+    })
+  })
+  el.querySelectorAll('.del-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Delete this saved password?')) return
+      await api.removePassword(btn.dataset.id)
+      await load()
+    })
+  })
+}
+
+document.getElementById('pw-search').addEventListener('input', e => {
+  const q = e.target.value.toLowerCase()
+  render(q ? allPasswords.filter(p => p.domain.includes(q) || p.username.includes(q)) : allPasswords)
+})
+
+document.getElementById('add-btn').addEventListener('click', () => {
+  document.getElementById('add-form').classList.toggle('open')
+})
+document.getElementById('cancel-btn').addEventListener('click', () => {
+  document.getElementById('add-form').classList.remove('open')
+})
+document.getElementById('save-btn').addEventListener('click', async () => {
+  const domain   = document.getElementById('f-domain').value.trim()
+  const username = document.getElementById('f-username').value.trim()
+  const password = document.getElementById('f-password').value
+  if (!domain || !username || !password) { alert('All fields are required.'); return }
+  await api.addPassword({ domain, username, password })
+  document.getElementById('f-domain').value = ''
+  document.getElementById('f-username').value = ''
+  document.getElementById('f-password').value = ''
+  document.getElementById('add-form').classList.remove('open')
+  await load()
+})
+
+load()
+</script>
+</body>
+</html>

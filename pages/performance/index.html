@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Performance — Litzium</title>
+  <link rel="stylesheet" href="../../theming/internal.css">
+  <style>
+    .perf-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .perf-refresh {
+      font-size: 12px;
+      color: var(--sub);
+    }
+    .perf-table { width: 100%; border-collapse: collapse; }
+    .perf-table th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--sub);
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 500;
+    }
+    .perf-table td {
+      padding: 10px 12px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    .perf-table tr:last-child td { border-bottom: none; }
+    .perf-table tr:hover td { background: var(--surface2); }
+    .perf-url { font-size: 11px; color: var(--sub); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .perf-bar-wrap { background: var(--surface2); border-radius: 3px; height: 6px; width: 120px; overflow: hidden; }
+    .perf-bar { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; }
+    .perf-bar.warn  { background: #f97316; }
+    .perf-bar.alert { background: #ef4444; }
+    .sys-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .sys-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .sys-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--sub); margin-bottom: 6px; }
+    .sys-value { font-size: 22px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+    .sys-unit  { font-size: 13px; color: var(--sub); font-weight: 400; margin-left: 3px; }
+  </style>
+</head>
+<body>
+<div class="ip-page">
+
+  <div class="ip-breadcrumb">
+    <a href="litzium://litz-urls">litzium URLs</a>
+    <span class="sep">›</span>
+    <span>Performance</span>
+  </div>
+
+  <div class="perf-header">
+    <div class="ip-section-title" style="font-size:22px;font-weight:700;">Performance</div>
+    <span class="perf-refresh" id="refresh-label">Updated just now</span>
+  </div>
+
+  <div class="sys-grid" id="sys-grid">
+    <div class="sys-card"><div class="sys-label">Browser Memory</div><div class="sys-value" id="sys-browser-mem">—<span class="sys-unit">MB</span></div></div>
+    <div class="sys-card"><div class="sys-label">Tab Count</div><div class="sys-value" id="sys-tab-count">—</div></div>
+    <div class="sys-card"><div class="sys-label">Highest Tab</div><div class="sys-value" id="sys-highest">—<span class="sys-unit">MB</span></div></div>
+  </div>
+
+  <div class="ip-section-title" style="margin-bottom:12px;">Tab Memory Usage</div>
+  <div class="ip-card" style="padding:0;overflow:hidden;">
+    <table class="perf-table">
+      <thead>
+        <tr>
+          <th>Tab</th>
+          <th>Private Memory</th>
+          <th>Shared Memory</th>
+          <th>Usage</th>
+        </tr>
+      </thead>
+      <tbody id="perf-tbody">
+        <tr><td colspan="4" style="text-align:center;color:var(--sub);padding:32px;">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+const api = window.litzPagesAPI
+let maxMem = 1
+
+async function refresh() {
+  const data = await api.getPerformanceData().catch(() => null)
+  if (!data) return
+
+  const tabs = data.tabs || []
+  maxMem = Math.max(1, ...tabs.map(t => t.privateMB || 0))
+
+  document.getElementById('sys-tab-count').textContent = tabs.length
+  const highest = Math.max(0, ...tabs.map(t => t.privateMB || 0))
+  document.getElementById('sys-highest').innerHTML = `${highest.toFixed(1)}<span class="sys-unit">MB</span>`
+  if (data.browserMB) document.getElementById('sys-browser-mem').innerHTML = `${data.browserMB.toFixed(1)}<span class="sys-unit">MB</span>`
+
+  const tbody = document.getElementById('perf-tbody')
+  if (!tabs.length) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--sub);padding:32px;">No tab data available</td></tr>`
+    return
+  }
+  tbody.innerHTML = tabs.map(t => {
+    const priv = (t.privateMB || 0).toFixed(1)
+    const shar = (t.sharedMB  || 0).toFixed(1)
+    const pct  = Math.min(100, Math.round((t.privateMB || 0) / maxMem * 100))
+    const cls  = pct > 75 ? 'alert' : pct > 50 ? 'warn' : ''
+    return `<tr>
+      <td>
+        <div>${t.title || 'Untitled'}</div>
+        <div class="perf-url">${t.url || ''}</div>
+      </td>
+      <td>${priv} MB</td>
+      <td>${shar} MB</td>
+      <td>
+        <div class="perf-bar-wrap"><div class="perf-bar ${cls}" style="width:${pct}%"></div></div>
+      </td>
+    </tr>`
+  }).join('')
+
+  const now = new Date()
+  document.getElementById('refresh-label').textContent = `Updated at ${now.toLocaleTimeString()}`
+}
+
+refresh()
+setInterval(refresh, 3000)
+</script>
+</body>
+</html>
