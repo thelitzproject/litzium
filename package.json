@@ -1,6 +1,6 @@
 {
   "name": "litzium",
-  "version": "v3.0.1922.13",
+  "version": "v4.00",
   "description": "A modern Chromium-based browser built on Electron",
   "main": "javas/main/index.js",
   "scripts": {
