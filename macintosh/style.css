@@ -1,0 +1,19 @@
+
+[data-platform="darwin"] #window-controls {
+  display: none;
+}
+
+/* Reserve 80px on the left for the native traffic light cluster */
+[data-platform="darwin"] #tabs-scroller {
+  padding-left: 80px;
+}
+
+/* macOS native drag region needs -webkit-app-region on the padding area */
+[data-platform="darwin"] #tab-bar {
+  padding-left: 0;
+}
+
+/* No maximize button on macOS — full screen handled by native green button */
+[data-platform="darwin"] #win-maximize {
+  display: none;
+}

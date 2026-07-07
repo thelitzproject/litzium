@@ -31,6 +31,8 @@ const DEFAULTS = {
   clockFormat:             '24h',      // 24h | 12h
   downloadLocation:        null,       // null = system default
   ntShortcuts:             null,       // null = use built-in defaults
+  accentColor:             null,       // null = default #7c83f7; otherwise hex string
+  domainZoom:              {},         // domain → zoomFactor (persisted per-domain zoom)
 }
 
 let _cache = null
