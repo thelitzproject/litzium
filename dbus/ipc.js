@@ -111,6 +111,24 @@ const IPC = {
   // ── Download shelf ────────────────────────────────────────────────────────
   SHELF_OPEN:  'shelf-open',   // send { height } — chrome tells main shelf appeared
   SHELF_CLOSE: 'shelf-close',  // send             — chrome tells main shelf gone
+
+  // ── Password manager ──────────────────────────────────────────────────────
+  PASSWORD_GET_ALL: 'password-get-all',  // invoke → PasswordEntry[]
+  PASSWORD_ADD:     'password-add',      // invoke { domain, username, password } → PasswordEntry
+  PASSWORD_REMOVE:  'password-remove',   // invoke { id }
+  PASSWORD_UPDATE:  'password-update',   // invoke { id, username?, password?, domain? }
+  PASSWORD_FIND:    'password-find',     // invoke { domain } → PasswordEntry[]
+
+  // ── Accent color ──────────────────────────────────────────────────────────
+  ACCENT_APPLY: 'accent-apply',  // main→chrome: { color: string }
+
+  // ── Dev pages ─────────────────────────────────────────────────────────────
+  PERFORMANCE_GET: 'performance-get',  // invoke → { tabs, browserMB }
+  STORAGE_GET:     'storage-get',      // invoke → { url, localStorage, sessionStorage, cookies }
+  NETWORK_REQUEST: 'network-request',  // main→renderer: network request record
+
+  // ── Command palette ───────────────────────────────────────────────────────
+  PALETTE_OPEN: 'palette-open',  // main→chrome: open command palette
 }
 
 module.exports = IPC

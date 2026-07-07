@@ -12,7 +12,7 @@
     "build:linux": "electron-builder --linux"
   },
   "keywords": ["browser", "electron", "chromium"],
-  "author": "Owen Gaydosz",
+  "author": "The Litzium Project",
   "license": "MIT",
   "devDependencies": {
     "electron":         "^35.0.0",
@@ -21,7 +21,7 @@
   "build": {
     "appId":         "com.litzium.browser",
     "productName":   "Litzium",
-    "copyright":     "Copyright © 2026 Owen Gaydosz",
+    "copyright":     "Copyright © 2026 The Litzium Project",
     "directories": {
       "output":          "dist",
       "buildResources":  "assets"
@@ -35,6 +35,8 @@
       "dbus/**/*",
       "printing/**/*",
       "slick/**/*",
+      "macintosh/**/*",
+      "tux/**/*",
       "!**/*.map",
       "!**/node_modules/.cache"
     ],
@@ -48,7 +50,10 @@
       "category": "public.app-category.utilities"
     },
     "linux": {
-      "target": "AppImage",
+      "target": [
+        { "target": "AppImage", "arch": ["x64", "arm64"] },
+        { "target": "deb",      "arch": ["x64"] }
+      ],
       "icon": "assets/icon.png",
       "category": "Network"
     }
