@@ -20,6 +20,7 @@ const PAGE_INBOUND = [
   IPC.DOWNLOAD_STARTED,
   IPC.DOWNLOAD_UPDATED,
   IPC.DOWNLOAD_DONE,
+  IPC.NETWORK_REQUEST,
 ]
 
 contextBridge.exposeInMainWorld('litzPagesAPI', {
@@ -57,14 +58,22 @@ contextBridge.exposeInMainWorld('litzPagesAPI', {
   navigate: (url) => ipcRenderer.send(IPC.NAV_GO, url),
 
   // ── Print Preview ─────────────────────────────────────────────────
-  /** Generate a PDF preview of the source page. Returns { success, data: base64, error? } */
   generatePrintPreview: (opts) => ipcRenderer.invoke(IPC.PRINT_PREVIEW_GENERATE, opts ?? {}),
-  /** Print the source page via the OS print dialog. Returns { success, failureReason? } */
   printSourcePage:      (opts) => ipcRenderer.invoke(IPC.PRINT_PREVIEW_PRINT,    opts ?? {}),
-  /** Save the source page as a PDF (shows save dialog). Returns { saved, filePath?, error? } */
   saveSourceAsPDF:      (opts) => ipcRenderer.invoke(IPC.PRINT_PREVIEW_SAVE,     opts ?? {}),
 
-  // ── IPC subscription (for live download updates) ───────────────────
+  // ── Password manager ──────────────────────────────────────────────
+  getPasswords:    ()          => ipcRenderer.invoke(IPC.PASSWORD_GET_ALL),
+  addPassword:     (entry)     => ipcRenderer.invoke(IPC.PASSWORD_ADD,    entry),
+  removePassword:  (id)        => ipcRenderer.invoke(IPC.PASSWORD_REMOVE, { id }),
+  updatePassword:  (id, patch) => ipcRenderer.invoke(IPC.PASSWORD_UPDATE, { id, ...patch }),
+  findPasswords:   (domain)    => ipcRenderer.invoke(IPC.PASSWORD_FIND,   { domain }),
+
+  // ── Dev pages ─────────────────────────────────────────────────────
+  getPerformanceData: () => ipcRenderer.invoke(IPC.PERFORMANCE_GET),
+  getStorageData:     () => ipcRenderer.invoke(IPC.STORAGE_GET),
+
+  // ── IPC subscription ──────────────────────────────────────────────
   on(channel, cb) {
     if (!PAGE_INBOUND.includes(channel)) return () => {}
     const fn = (_, data) => cb(data)

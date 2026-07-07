@@ -18,6 +18,10 @@ const SIDEBAR_W   = 280
 const PAGE_PRELOAD = 'javas/preload/page.js'
 const PROJECT_ROOT = path.join(__dirname, '../../')
 
+function domainOf(url) {
+  try { return new URL(url).hostname } catch { return null }
+}
+
 const INTERNAL_PAGES = {
   'litzium://newtab':        { file: 'pages/newtab/index.html',        title: 'New Tab',       preload: PAGE_PRELOAD },
   'litzium://version':       { file: 'pages/version/index.html',       title: 'Version' },
@@ -31,6 +35,10 @@ const INTERNAL_PAGES = {
   'litzium://downloads':     { file: 'pages/downloads/index.html',     title: 'Downloads',     preload: PAGE_PRELOAD },
   'litzium://predictions':   { file: 'pages/predictions/index.html',   title: 'Predictions',   preload: PAGE_PRELOAD },
   'litzium://print-preview': { file: 'pages/print-preview/index.html', title: 'Print Preview', preload: PAGE_PRELOAD },
+  'litzium://passwords':     { file: 'pages/passwords/index.html',     title: 'Passwords',     preload: PAGE_PRELOAD },
+  'litzium://performance':   { file: 'pages/performance/index.html',   title: 'Performance',   preload: PAGE_PRELOAD },
+  'litzium://storage':       { file: 'pages/storage/index.html',       title: 'Storage',       preload: PAGE_PRELOAD },
+  'litzium://network':       { file: 'pages/network/index.html',       title: 'Network',       preload: PAGE_PRELOAD },
 }
 
 // ─── Session file (shared; only the first window manages it) ──────────────────
@@ -213,6 +221,15 @@ function createTabManager(win, chromeHeight = 88) {
       if (settings.get('saveHistory') !== false) {
         history.push({ url, title: t.title, favicon: t.favicon })
       }
+      const domain = domainOf(url)
+      if (domain) {
+        const saved = (settings.get('domainZoom') || {})[domain]
+        if (saved && saved !== 1) {
+          wc.setZoomFactor(saved)
+          t.zoomFactor = saved
+          if (id === activeId) toChrome(IPC.ZOOM_CHANGED, { tabId: id, zoomFactor: saved })
+        }
+      }
     })
 
     wc.on('did-navigate-in-page', (_, url) => {
@@ -257,6 +274,12 @@ function createTabManager(win, chromeHeight = 88) {
       wc.setZoomFactor(next)
       t.zoomFactor = next
       if (id === activeId) toChrome(IPC.ZOOM_CHANGED, { tabId: id, zoomFactor: next })
+      const domain = domainOf(t.url)
+      if (domain) {
+        const dz = settings.get('domainZoom') || {}
+        dz[domain] = next
+        settings.set('domainZoom', dz)
+      }
     })
 
     wc.on('context-menu', (_, params) => {
@@ -467,6 +490,52 @@ function createTabManager(win, chromeHeight = 88) {
     t.view.webContents.setZoomFactor(1)
     t.zoomFactor = 1
     toChrome(IPC.ZOOM_CHANGED, { tabId: activeId, zoomFactor: 1 })
+    const domain = domainOf(t.url)
+    if (domain) {
+      const dz = settings.get('domainZoom') || {}
+      delete dz[domain]
+      settings.set('domainZoom', dz)
+    }
+  }
+
+  async function getTabsMemoryInfo() {
+    const results = []
+    for (const [, tab] of tabs) {
+      try {
+        const info = await tab.view.webContents.getProcessMemoryInfo()
+        results.push({
+          title:     tab.title,
+          url:       tab.url,
+          privateMB: +(info.private / 1024).toFixed(1),
+          sharedMB:  +(info.shared  / 1024).toFixed(1),
+        })
+      } catch {}
+    }
+    return results
+  }
+
+  async function getActiveStorageData() {
+    const t = tabs.get(activeId)
+    if (!t || t.url.startsWith('litzium://') || t.url.startsWith('file://')) return null
+    try {
+      const { session: wSession } = t.view.webContents
+      const [storData, cookies] = await Promise.all([
+        t.view.webContents.executeJavaScript(`
+          (function() {
+            const ls = [], ss = []
+            for (let i = 0; i < localStorage.length; i++) {
+              const k = localStorage.key(i); ls.push({ k, v: localStorage.getItem(k) })
+            }
+            for (let i = 0; i < sessionStorage.length; i++) {
+              const k = sessionStorage.key(i); ss.push({ k, v: sessionStorage.getItem(k) })
+            }
+            return { localStorage: ls, sessionStorage: ss }
+          })()
+        `),
+        wSession.cookies.get({ url: t.url }),
+      ])
+      return { url: t.url, ...storData, cookies }
+    } catch { return null }
   }
 
   // ── Move tab (drag to reorder) ────────────────────────────────────────────
@@ -568,7 +637,9 @@ function createTabManager(win, chromeHeight = 88) {
     pinTab, unpinTab,
     reopenLastClosed,
     saveSession, loadSession, clearSession, restoreSession,
+    getTabsMemoryInfo, getActiveStorageData,
     get size() { return tabs.size },
+    getTabs() { return Array.from(tabs.values()).map(t => ({ id: t.id, url: t.url, title: t.title })) },
   }
 }
 

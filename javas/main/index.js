@@ -7,8 +7,10 @@ const history   = require('../../modules/history')
 const bookmarks = require('../../modules/bookmarks')
 const downloads = require('../../modules/downloads')
 const settings  = require('../../modules/settings')
+const passwords = require('../../modules/passwords')
 const printer   = require('../../printing/print')
 const CHROME_HEIGHT = 88
+const isMac = process.platform === 'darwin'
 
 /** @type {Map<BrowserWindow, ReturnType<typeof createTabManager>>} */
 const windowManagers = new Map()
@@ -30,15 +32,20 @@ function broadcastTheme(theme) {
   }
 }
 
+function broadcastAccent(color) {
+  for (const [bw] of windowManagers) {
+    if (!bw.isDestroyed()) bw.webContents.send(IPC.ACCENT_APPLY, { color })
+  }
+}
+
 
 function createWindow() {
-  const win = new BrowserWindow({
+  const winOptions = {
     width: 1280,
     height: 800,
     minWidth: 800,
     minHeight: 500,
     show: false,
-    frame: false,
     backgroundColor: '#1a1a2e',
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
@@ -46,7 +53,16 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: false,
     },
-  })
+  }
+
+  if (isMac) {
+    winOptions.titleBarStyle = 'hiddenInset'
+    winOptions.trafficLightPosition = { x: 12, y: 14 }
+  } else {
+    winOptions.frame = false
+  }
+
+  const win = new BrowserWindow(winOptions)
 
   const tabs = createTabManager(win, CHROME_HEIGHT)
   windowManagers.set(win, tabs)
@@ -59,7 +75,9 @@ function createWindow() {
     tabs.init()
 
     const pending = tabs.loadSession()
-    if (pending && pending.tabs.length > 0) {
+    if (pending && pending.tabs.length > 0 && settings.get('startupBehavior') === 'restore') {
+      tabs.restoreSession()
+    } else if (pending && pending.tabs.length > 0) {
       tabs.createTab('litzium://newtab')
       win.webContents.send(IPC.SESSION_AVAILABLE, { count: pending.tabs.length })
     } else {
@@ -67,6 +85,8 @@ function createWindow() {
     }
 
     win.webContents.send(IPC.THEME_APPLY, resolveTheme(settings.get('browserTheme')))
+    const accent = settings.get('accentColor')
+    if (accent) win.webContents.send(IPC.ACCENT_APPLY, { color: accent })
     downloads.setup(session.defaultSession, win, IPC)
   })
 
@@ -149,6 +169,31 @@ function setupIPC() {
     settings.set(key, value)
     if (key === 'searchEngine') windowManagers.forEach(m => m.setSearchEngine(value))
     if (key === 'browserTheme') broadcastTheme(resolveTheme(value))
+    if (key === 'accentColor')  broadcastAccent(value)
+  })
+
+  // ── Password manager ───────────────────────────────────────────────────────
+  ipcMain.handle(IPC.PASSWORD_GET_ALL, ()                  => passwords.getAll())
+  ipcMain.handle(IPC.PASSWORD_ADD,     (_, e)              => passwords.add(e))
+  ipcMain.handle(IPC.PASSWORD_REMOVE,  (_, { id })         => { passwords.remove(id); return true })
+  ipcMain.handle(IPC.PASSWORD_UPDATE,  (_, { id, ...p })   => passwords.update(id, p))
+  ipcMain.handle(IPC.PASSWORD_FIND,    (_, { domain } = {}) => passwords.findByDomain(domain))
+
+  // ── Dev pages ──────────────────────────────────────────────────────────────
+  ipcMain.handle(IPC.PERFORMANCE_GET, async event => {
+    const manager = getManager(event)
+    if (!manager) return { tabs: [], browserMB: 0 }
+    const tabsList = await manager.getTabsMemoryInfo()
+    let browserMB = 0
+    try {
+      const info = await process.getProcessMemoryInfo()
+      browserMB = +(info.private / 1024).toFixed(1)
+    } catch {}
+    return { tabs: tabsList, browserMB }
+  })
+
+  ipcMain.handle(IPC.STORAGE_GET, async event => {
+    return getManager(event)?.getActiveStorageData() ?? null
   })
 
   // ── Find in page ───────────────────────────────────────────────────────────

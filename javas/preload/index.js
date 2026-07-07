@@ -2,6 +2,9 @@
 const { contextBridge, ipcRenderer } = require('electron')
 const IPC = require('../../dbus/ipc')
 
+// Set platform attribute before any page scripts run — prevents FOUC in platform CSS
+document.documentElement.dataset.platform = process.platform
+
 // Channels the main process is allowed to push to the chrome renderer
 const INBOUND = [
   IPC.TAB_CREATED,
@@ -24,6 +27,7 @@ const INBOUND = [
   IPC.PRINT_RESULT,
   IPC.THEME_APPLY,
   IPC.SESSION_AVAILABLE,
+  IPC.ACCENT_APPLY,
 ]
 
 contextBridge.exposeInMainWorld('litzium', {
@@ -90,6 +94,9 @@ contextBridge.exposeInMainWorld('litzium', {
 
   // ── Multi-window ──────────────────────────────────────────────────────
   newWindow: () => ipcRenderer.send(IPC.WIN_NEW),
+
+  // ── Platform ─────────────────────────────────────────────────────────
+  platform: process.platform,
 
   // ── Data (sidebar + omnibox) ──────────────────────────────────────────
   getBookmarks:  ()               => ipcRenderer.invoke(IPC.BOOKMARK_GET_ALL),

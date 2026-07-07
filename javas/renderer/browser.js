@@ -443,6 +443,16 @@ function applyTheme(theme) {
 
 window.litzium.on(ch.THEME_APPLY, applyTheme)
 
+// ─── Accent color ─────────────────────────────────────────────────────────────
+
+window.litzium.on(ch.ACCENT_APPLY, ({ color }) => {
+  if (color) {
+    document.documentElement.style.setProperty('--accent', color)
+  } else {
+    document.documentElement.style.removeProperty('--accent')
+  }
+})
+
 // ─── Session restore banner ───────────────────────────────────────────────────
 
 window.litzium.on(ch.SESSION_AVAILABLE, ({ count }) => {
@@ -1112,6 +1122,7 @@ document.addEventListener('keydown', e => {
   else if (ctrl && e.key === 'w')                   { e.preventDefault(); if (activeTabId) window.litzium.closeTab(activeTabId) }
   else if (ctrl && e.key === 'r')                   { e.preventDefault(); window.litzium.reload() }
   else if (ctrl && e.key === 'l')                   { e.preventDefault(); focusOmnibox() }
+  else if (ctrl && e.key === 'k')                   { e.preventDefault(); openPalette() }
   else if (ctrl && e.key === 'f')                   { e.preventDefault(); openFindBar() }
   else if (ctrl && !e.shiftKey && e.key === 'p')   { e.preventDefault(); window.litzium.openPrintPreview() }
   else if (ctrl &&  e.shiftKey && e.key === 'P')   { e.preventDefault(); window.litzium.printToPDF() }
@@ -1123,6 +1134,7 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'F5')                          { e.preventDefault(); window.litzium.reload() }
   else if (e.key === 'F12')                         window.litzium.openDevTools()
   else if (e.key === 'Escape' && !findOpen) {
+    if (!$('cmd-palette').hidden) { closePalette(); return }
     const entry = activeTabId ? tabStore.get(activeTabId) : null
     if (entry?.data.isLoading) window.litzium.stopLoading()
   }
@@ -1134,6 +1146,108 @@ document.addEventListener('keydown', e => {
     if (ids[idx]) window.litzium.switchTab(ids[idx])
   }
 })
+
+// ─── Command palette ──────────────────────────────────────────────────────────
+
+const PALETTE_COMMANDS = [
+  { icon: '+', label: 'New Tab',               sub: 'Ctrl+T',  action: () => window.litzium.newTab() },
+  { icon: '↩', label: 'Reload',                sub: 'Ctrl+R',  action: () => window.litzium.reload() },
+  { icon: '←', label: 'Go Back',               sub: 'Alt+←',   action: () => window.litzium.goBack() },
+  { icon: '→', label: 'Go Forward',            sub: 'Alt+→',   action: () => window.litzium.goForward() },
+  { icon: '⚙', label: 'Settings',              sub: '',        action: () => window.litzium.newTab('litzium://settings') },
+  { icon: '🕐', label: 'History',              sub: '',        action: () => window.litzium.newTab('litzium://history') },
+  { icon: '★', label: 'Bookmarks',             sub: '',        action: () => window.litzium.newTab('litzium://bookmarks') },
+  { icon: '⬇', label: 'Downloads',             sub: '',        action: () => window.litzium.newTab('litzium://downloads') },
+  { icon: '🔒', label: 'Passwords',            sub: '',        action: () => window.litzium.newTab('litzium://passwords') },
+  { icon: '📊', label: 'Performance',           sub: '',        action: () => window.litzium.newTab('litzium://performance') },
+  { icon: '💾', label: 'Storage Inspector',     sub: '',        action: () => window.litzium.newTab('litzium://storage') },
+  { icon: '🌐', label: 'Network Monitor',       sub: '',        action: () => window.litzium.newTab('litzium://network') },
+  { icon: '🖨', label: 'Print',                 sub: 'Ctrl+P',  action: () => window.litzium.openPrintPreview() },
+  { icon: '🔍', label: 'Find in Page',          sub: 'Ctrl+F',  action: () => openFindBar() },
+  { icon: '☰', label: 'Toggle Sidebar',         sub: 'Ctrl+B',  action: () => toggleSidebar() },
+  { icon: '⛶', label: 'New Window',             sub: 'Ctrl+N',  action: () => window.litzium.newWindow() },
+  { icon: '🛠', label: 'DevTools',              sub: 'F12',     action: () => window.litzium.openDevTools() },
+]
+
+let paletteSelectedIdx = 0
+let paletteItems = []
+
+const cmdPalette = $('cmd-palette')
+const cmdInput   = $('cmd-input')
+const cmdResults = $('cmd-results')
+
+function openPalette() {
+  cmdPalette.hidden = false
+  cmdInput.value = ''
+  renderPalette('')
+  cmdInput.focus()
+}
+
+function closePalette() {
+  cmdPalette.hidden = true
+  cmdInput.value = ''
+}
+
+function renderPalette(q) {
+  const lq = q.toLowerCase()
+  const cmdMatches = PALETTE_COMMANDS.filter(c => !lq || c.label.toLowerCase().includes(lq))
+
+  paletteItems = cmdMatches
+  paletteSelectedIdx = paletteItems.length ? 0 : -1
+
+  if (!paletteItems.length) {
+    cmdResults.innerHTML = q
+      ? `<div class="cmd-item" style="opacity:0.5">No results for "${escHtml(q)}"</div>`
+      : ''
+    return
+  }
+
+  let html = ''
+  if (cmdMatches.length) html += `<div class="cmd-section">Commands</div>`
+  cmdMatches.forEach((c, i) => {
+    html += `<div class="cmd-item${i === 0 ? ' selected' : ''}" data-idx="${i}">
+      <span class="cmd-icon">${c.icon}</span>
+      <span class="cmd-label">${escHtml(c.label)}</span>
+      ${c.sub ? `<span class="cmd-sub">${escHtml(c.sub)}</span>` : ''}
+    </div>`
+  })
+  cmdResults.innerHTML = html
+
+  cmdResults.querySelectorAll('.cmd-item').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      const idx = Number(el.dataset.idx)
+      setPaletteSelected(idx)
+    })
+    el.addEventListener('click', () => {
+      commitPaletteItem(Number(el.dataset.idx))
+    })
+  })
+}
+
+function setPaletteSelected(idx) {
+  paletteSelectedIdx = idx
+  cmdResults.querySelectorAll('.cmd-item').forEach((el, i) => {
+    el.classList.toggle('selected', i === idx)
+  })
+}
+
+function commitPaletteItem(idx) {
+  const item = paletteItems[idx]
+  if (!item) return
+  closePalette()
+  item.action()
+}
+
+$('cmd-backdrop').addEventListener('click', closePalette)
+
+cmdInput.addEventListener('keydown', e => {
+  if (e.key === 'Escape')    { e.stopPropagation(); closePalette(); return }
+  if (e.key === 'ArrowDown') { e.preventDefault(); setPaletteSelected(Math.min(paletteSelectedIdx + 1, paletteItems.length - 1)); return }
+  if (e.key === 'ArrowUp')   { e.preventDefault(); setPaletteSelected(Math.max(paletteSelectedIdx - 1, 0)); return }
+  if (e.key === 'Enter')     { e.preventDefault(); commitPaletteItem(paletteSelectedIdx) }
+})
+
+cmdInput.addEventListener('input', () => renderPalette(cmdInput.value))
 
 // ─── Util ─────────────────────────────────────────────────────────────────────
 
